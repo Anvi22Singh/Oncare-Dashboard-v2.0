@@ -2007,20 +2007,47 @@ function renderOwnerWiseReport() {
    =========================================================== */
 const GS_SETTINGS_KEY = 'oncare_gs_settings_v1';
 
+/* ---------------------------------------------------------------
+   EMBEDDED TEAM DEFAULTS
+   These pre-fill the Google Sheets fields for everyone so no one
+   has to type them in. A teammate can still edit any field (e.g.
+   update the tab name when the month rolls over) and their change
+   is saved locally and overrides the default for them.
+   NOTE: this file is client-side — anyone who can open the page
+   can read this key. Keep the key restricted in Google Cloud
+   Console (Sheets API only + HTTP-referrer limited to your site).
+   --------------------------------------------------------------- */
+const GS_DEFAULTS = {
+  apiKey:    'AIzaSyChlSd90Xbqs2WP7O1ir2Zq1Ue2dNoGR08',
+  opdUrl:    'https://docs.google.com/spreadsheets/d/1-bS3-XOzmUJDNu2efZwjz9s661hs5diG7SK2fNKKym4/edit?pli=1&gid=735122179#gid=735122179',
+  opdTab:    "Jun'26-Opds",
+  opdBlrUrl: 'https://docs.google.com/spreadsheets/d/1gTRxi-ckIyRaQUjYpiJq5WvhTVt-1AYWYBeh6xSaNp4/edit?gid=1740862767#gid=1740862767',
+  opdBlrTab: 'June-OPDs',
+  ipdUrl:    'https://docs.google.com/spreadsheets/d/1jIravT9Gslgt0o8aiIfSuwb1x_XKZoRnl1D58Fpcv7U/edit?gid=489661785#gid=489661785',
+  ipdTab:    'JUN-IPD',
+  adsUrl:    '',
+  adsTab:    ''
+};
+
+function applySheetsSettings(s) {
+  if (s.apiKey)    $('#gs-api-key').value    = s.apiKey;
+  if (s.opdUrl)    $('#gs-opd-url').value    = s.opdUrl;
+  if (s.opdTab)    $('#gs-opd-tab').value    = s.opdTab;
+  if (s.opdBlrUrl) $('#gs-opdblr-url').value = s.opdBlrUrl;
+  if (s.opdBlrTab) $('#gs-opdblr-tab').value = s.opdBlrTab;
+  if (s.ipdUrl)    $('#gs-ipd-url').value    = s.ipdUrl;
+  if (s.ipdTab)    $('#gs-ipd-tab').value    = s.ipdTab;
+  if (s.adsUrl)    $('#gs-ads-url').value    = s.adsUrl;
+  if (s.adsTab)    $('#gs-ads-tab').value    = s.adsTab;
+}
+
 function loadSheetsSettings() {
+  // 1) Embedded team defaults first, so everyone gets them automatically.
+  applySheetsSettings(GS_DEFAULTS);
+  // 2) Any locally-saved values override the defaults for this browser.
   try {
     const raw = localStorage.getItem(GS_SETTINGS_KEY);
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    if (s.apiKey) $('#gs-api-key').value = s.apiKey;
-    if (s.opdUrl) $('#gs-opd-url').value = s.opdUrl;
-    if (s.opdTab) $('#gs-opd-tab').value = s.opdTab;
-    if (s.opdBlrUrl) $('#gs-opdblr-url').value = s.opdBlrUrl;
-    if (s.opdBlrTab) $('#gs-opdblr-tab').value = s.opdBlrTab;
-    if (s.ipdUrl) $('#gs-ipd-url').value = s.ipdUrl;
-    if (s.ipdTab) $('#gs-ipd-tab').value = s.ipdTab;
-    if (s.adsUrl) $('#gs-ads-url').value = s.adsUrl;
-    if (s.adsTab) $('#gs-ads-tab').value = s.adsTab;
+    if (raw) applySheetsSettings(JSON.parse(raw));
   } catch(e) { /* ignore */ }
 }
 function saveSheetsSettings() {
