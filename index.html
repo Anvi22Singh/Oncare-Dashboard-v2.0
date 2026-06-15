@@ -3149,6 +3149,16 @@
         const opdMap = countTrackerBySource(getAllOpd(), 'Opd Date', 'ORIGINAL SOURCE', trackerFrom, trackerTo);
         const ipdMap = countTrackerBySource(state.ipd, 'IPD DATE', 'ORIGINAL SOURCE', trackerFrom, trackerTo);
 
+        // Pro-rate the fixed MONTHLY spend (Practo & Justdial only) by the number of
+        // calendar days in the selected window:  monthly × (daysInRange ÷ daysInMonth).
+        let fixedSpendFactor = 1;
+        if (trackerFrom && trackerTo) {
+          const _df = new Date(trackerFrom), _dt = new Date(trackerTo);
+          const daysInRange = Math.round((_dt - _df) / 86400000) + 1;
+          const daysInMonth = new Date(_df.getFullYear(), _df.getMonth() + 1, 0).getDate();
+          if (daysInRange > 0 && daysInMonth > 0) fixedSpendFactor = daysInRange / daysInMonth;
+        }
+
         // ==== Google Ads sheet aggregates (override manual when ads is connected) ====
         const adsAvailable = !!(state.ads && state.ads.length);
         // Social Media sheet: override manual spend for the six social sources when connected
@@ -3262,7 +3272,8 @@
           // Justdial & Practo use a hard-coded fixed spend; the rest use user-entered spend × 1.18.
           if (AUTO_CPL_SOURCES.has(r.name)) {
             if (FIXED_SPEND_INCL_GST[r.name] !== undefined) {
-              tspend = FIXED_SPEND_INCL_GST[r.name];          // already incl GST
+              // Monthly fixed spend (incl GST), pro-rated to the selected range by day count.
+              tspend = FIXED_SPEND_INCL_GST[r.name] * fixedSpendFactor;
             }
             // tspend is now either fixed (incl GST) or spendExcl × 1.18 (set above)
             cpl = (tspend !== null && !isNaN(tspend) && tspend > 0 && m.total > 0) ? tspend / m.total : null;
@@ -3585,9 +3596,14 @@
             // CPL = D-1 GDN spend (excl GST) ÷ D-1 GDN leads from LeadSquared
             cpl = (adsD1Gdn && adsD1Gdn.spend > 0 && m.total > 0) ? adsD1Gdn.spend / m.total : null;
           } else if (FIXED_SPEND_INCL_GST[r.name] !== undefined) {
-            // Justdial / Practo — fixed spend ÷ D-1 leads
-            const tspendIncl = FIXED_SPEND_INCL_GST[r.name];
-            if (m.total > 0) cpl = tspendIncl / m.total;
+            // Justdial / Practo — monthly fixed spend pro-rated to ONE day ÷ D-1 leads
+            let oneDaySpend = FIXED_SPEND_INCL_GST[r.name];
+            if (d1Date) {
+              const _d = new Date(d1Date);
+              const daysInMonth = new Date(_d.getFullYear(), _d.getMonth() + 1, 0).getDate();
+              if (daysInMonth > 0) oneDaySpend = FIXED_SPEND_INCL_GST[r.name] / daysInMonth;
+            }
+            if (m.total > 0) cpl = oneDaySpend / m.total;
           } else if (socialAvailable && SOCIAL_SHEET_SOURCES.has(r.name) && d1Date) {
             // Social Media sheet — D-1 CPL = (yesterday's spend incl GST) ÷ yesterday's leads.
             // Awareness Meta = spend only, blank CPL.
