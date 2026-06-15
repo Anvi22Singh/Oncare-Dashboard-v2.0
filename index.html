@@ -887,15 +887,6 @@
 
       <div class="card">
         <h2>📱 Social Media — Spend by Source <span class="small-muted">(live from Google Sheets)</span></h2>
-        <p class="small-muted" style="margin-top:-6px">
-          Sums <b>Amount spent</b> (column C) by date (<b>Day</b>, column E), classified into six sources via the
-          <b>CUSTOM</b> column (column V):
-          Awareness&nbsp;→&nbsp;Awareness Meta · social media - blr&nbsp;→&nbsp;Social Media - BLR · Leadgen
-          form&nbsp;→&nbsp;Social Media Test ·
-          SM Inbound&nbsp;→&nbsp;Social Media Inbound · Whatsapp&nbsp;→&nbsp;WhatsApp-FB / WhatsApp &amp; Insta ·
-          Website visitors&nbsp;→&nbsp;Social Media.
-          GST column adds 18% on top of the sheet spend. Click <b>🔄 Refresh from Google Sheets</b> to load.
-        </p>
         <div class="filter-row" style="margin-top:6px">
           <label>Date range (Day):</label>
           <input type="date" id="social-from" style="width:160px" />
@@ -906,7 +897,8 @@
         <div class="table-wrap" id="social-report" style="margin-top:10px">
           <div class="small-muted" style="padding:10px">No social media data loaded yet. Add the Social Media sheet URL
             + tab name above and click <b>Refresh from Google Sheets</b>. If the sources don't map correctly, click
-            <b>🔍 Inspect Social Data</b> to see the raw CUSTOM values.</div>
+            <b>🔍 Inspect Social Data</b> to see the raw CUSTOM values.
+          </div>
         </div>
       </div>
 
@@ -3699,4 +3691,348 @@
         const map = new Map();
         rows.forEach(r => {
           const c = cleanPhone(r['Customer']);
-          if 
+          if (!c) return;
+          if (!map.has(c)) map.set(c, { customer: c, trials: 0 });
+          map.get(c).trials++;
+        });
+        return [...map.values()].sort((a, b) => b.trials - a.trials);
+      }
+
+      function trialTable(arr, emptyMsg = 'None') {
+        if (!arr.length) return `<p class="small-muted">${emptyMsg}</p>`;
+        let h = '<table class="small-table"><thead><tr><th>Customer Number</th><th class="num">No. of Trials</th></tr></thead><tbody>';
+        arr.forEach(o => {
+          h += `<tr><td>${o.customer}</td><td class="num">${o.trials > 1 ? `<b>${o.trials}</b>` : o.trials}</td></tr>`;
+        });
+        h += `<tr class="total"><td>TOTAL</td><td class="num">${arr.reduce((s, o) => s + o.trials, 0)}</td></tr>`;
+        h += '</tbody></table>';
+        return h;
+      }
+
+      function avgTalkTimeBy(rows) {
+        // Spec: "if call status is marked as answered then calculate avg talk time of agents"
+        const ans = rows.filter(r => String(r['Call Status'] || '').toLowerCase() === 'answered');
+        const agg = new Map();
+        ans.forEach(r => {
+          const a = (r['Agent Name'] || '').trim();
+          if (!a) return;
+          const t = parseHmsToSec(r['Talk Time (hh:mm:ss)']);
+          if (!agg.has(a)) agg.set(a, { sum: 0, n: 0 });
+          const o = agg.get(a);
+          o.sum += t; o.n++;
+        });
+        const out = [];
+        agg.forEach((v, k) => out.push({ agent: k, avg: v.n ? v.sum / v.n : 0, calls: v.n }));
+        out.sort((a, b) => a.agent.localeCompare(b.agent));
+        return out;
+      }
+
+      function agentTable(arr) {
+        if (!arr.length) return '<p class="small-muted">No answered calls</p>';
+        let h = '<table class="small-table agents-table"><thead><tr><th>Agent</th><th class="num">Avg Talk Time</th><th class="num">Answered Calls</th></tr></thead><tbody>';
+        arr.forEach(o => {
+          h += `<tr><td>${o.agent}</td><td class="num">${secToHms(o.avg)}</td><td class="num">${o.calls}</td></tr>`;
+        });
+        h += '</tbody></table>';
+        return h;
+      }
+
+      function formatTrackerDate(dateStr) {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const [y, m, d] = dateStr.split('-');
+        return `${d}-${months[parseInt(m) - 1]}-${y.slice(-2)}`;
+      }
+
+      function buildCallsTracker(callsSubset) {
+        const subset = callsSubset || state.calls;
+        if (!subset || !subset.length) return '<p class="small-muted">No call records for this region.</p>';
+        const dates = uniqueDates(subset, 'Date and Time').sort();
+        if (!dates.length) return '<p class="small-muted">No dated rows.</p>';
+
+        // Per-date counts
+        function counts(rows) {
+          const total = rows.length;
+          const missed = rows.filter(r =>
+            String(r['Call Status'] || '').toLowerCase() === 'abandoned' &&
+            String(r['Customer Status'] || '').toLowerCase() === 'connected').length;
+          const abandoned = rows.filter(r =>
+            String(r['Call Status'] || '').toLowerCase() === 'abandoned' &&
+            String(r['Customer Status'] || '').toLowerCase() === 'not connected').length;
+          return { total, missed, abandoned };
+        }
+        function pct(n, d) { return d ? (n / d * 100) : 0; }
+        function fmtPct(p) { return (p === 0 ? '0%' : p.toFixed(p < 10 ? 0 : (p === Math.round(p) ? 0 : 2)) + '%'); }
+        // pctCell with optional threshold:
+        //   threshold = number  → red if p > threshold, else green
+        //   threshold = null    → always green (no benchmark, e.g. Abandoned %)
+        function pctCell(p, threshold) {
+          let cls = 'good-pct';
+          if (threshold !== null && threshold !== undefined && p > threshold) cls = 'bad-pct';
+          const tip = threshold !== null && threshold !== undefined ? ` title="Benchmark: ${threshold}%"` : '';
+          return `<td class="num ${cls}"${tip}>${fmtPct(p)}</td>`;
+        }
+        // Read benchmarks from inputs (fallback to defaults)
+        const bmWh = Number($('#bm-wh-miss').value) || 10;
+        const bmNwh = Number($('#bm-nwh-miss').value) || 20;
+        const bmOv = Number($('#bm-ov-miss').value) || 15;
+
+        const rows = dates.map(date => {
+          const dayRows = subset.filter(r => {
+            const d = parseDate(r['Date and Time']);
+            return d && dateKey(d) === date;
+          });
+          const wh = dayRows.filter(r => isWorkingHours(parseDate(r['Date and Time'])));
+          const nwh = dayRows.filter(r => !isWorkingHours(parseDate(r['Date and Time'])));
+          return { date, all: counts(dayRows), w: counts(wh), n: counts(nwh) };
+        });
+
+        // TOTAL row
+        const tot = { all: { total: 0, missed: 0, abandoned: 0 }, w: { total: 0, missed: 0, abandoned: 0 }, n: { total: 0, missed: 0, abandoned: 0 } };
+        rows.forEach(r => {
+          ['all', 'w', 'n'].forEach(k => {
+            tot[k].total += r[k].total;
+            tot[k].missed += r[k].missed;
+            tot[k].abandoned += r[k].abandoned;
+          });
+        });
+
+        let html = `<table class="tracker-table">
+    <thead>
+      <tr>
+        <th rowspan="2">Date</th>
+        <th colspan="5" class="group-wh">⏰ Working Hours (10:00 – 19:30)</th>
+        <th colspan="5" class="group-nwh">🌙 Non-Working Hours (19:31 – 09:59)</th>
+        <th colspan="2" class="group-overall">✅ Overall</th>
+      </tr>
+      <tr>
+        <th class="sub-h num">Total</th><th class="sub-h num">Missed</th><th class="sub-h num">Missed %</th>
+        <th class="sub-h num">Abandoned</th><th class="sub-h num">Abandoned %</th>
+        <th class="sub-h num">Total</th><th class="sub-h num">Missed</th><th class="sub-h num">Missed %</th>
+        <th class="sub-h num">Abandoned</th><th class="sub-h num">Abandoned %</th>
+        <th class="sub-h num">Missed %</th><th class="sub-h num">Abandoned %</th>
+      </tr>
+    </thead><tbody>`;
+
+        rows.forEach(r => {
+          html += `<tr>
+      <td><b>${formatTrackerDate(r.date)}</b></td>
+      <td class="num">${r.w.total}</td>
+      <td class="num">${r.w.missed}</td>
+      ${pctCell(pct(r.w.missed, r.w.total), bmWh)}
+      <td class="num">${r.w.abandoned}</td>
+      ${pctCell(pct(r.w.abandoned, r.w.total), null)}
+      <td class="num">${r.n.total}</td>
+      <td class="num">${r.n.missed}</td>
+      ${pctCell(pct(r.n.missed, r.n.total), bmNwh)}
+      <td class="num">${r.n.abandoned}</td>
+      ${pctCell(pct(r.n.abandoned, r.n.total), null)}
+      ${pctCell(pct(r.all.missed, r.all.total), bmOv)}
+      ${pctCell(pct(r.all.abandoned, r.all.total), null)}
+    </tr>`;
+        });
+
+        // TOTAL row
+        html += `<tr class="total">
+    <td>TOTAL</td>
+    <td class="num">${tot.w.total}</td>
+    <td class="num">${tot.w.missed}</td>
+    ${pctCell(pct(tot.w.missed, tot.w.total), bmWh)}
+    <td class="num">${tot.w.abandoned}</td>
+    ${pctCell(pct(tot.w.abandoned, tot.w.total), null)}
+    <td class="num">${tot.n.total}</td>
+    <td class="num">${tot.n.missed}</td>
+    ${pctCell(pct(tot.n.missed, tot.n.total), bmNwh)}
+    <td class="num">${tot.n.abandoned}</td>
+    ${pctCell(pct(tot.n.abandoned, tot.n.total), null)}
+    ${pctCell(pct(tot.all.missed, tot.all.total), bmOv)}
+    ${pctCell(pct(tot.all.abandoned, tot.all.total), null)}
+  </tr></tbody></table>`;
+        return html;
+      }
+
+      function renderCalls() {
+        if (!state.calls) {
+          ['#calls-summary-delhi', '#calls-summary-blr'].forEach(sel => {
+            const el = $(sel); if (el) el.innerHTML = '<div class="empty-state"><div class="big">📞</div>Upload Knowlarity call logs to see this report.</div>';
+          });
+          ['#calls-tracker-delhi', '#calls-tracker-blr',
+            '#calls-missed-delhi', '#calls-abandoned-delhi', '#calls-nwh-delhi',
+            '#calls-missed-blr', '#calls-abandoned-blr', '#calls-nwh-blr',
+            '#calls-agents-d1-delhi', '#calls-agents-mtd-delhi',
+            '#calls-agents-d1-blr', '#calls-agents-mtd-blr'].forEach(sel => {
+              const el = $(sel); if (el) el.innerHTML = '';
+            });
+          return;
+        }
+
+        // Split state.calls by Sr Number
+        const blrCalls = state.calls.filter(isBlrCall);
+        const delhiCalls = state.calls.filter(r => !isBlrCall(r));
+
+        // Trackers (multi-day) per region
+        $('#calls-tracker-delhi').innerHTML = buildCallsTracker(delhiCalls);
+        $('#calls-tracker-blr').innerHTML = buildCallsTracker(blrCalls);
+
+        // D-1 date filter
+        let target = $('#calls-date').value;
+        if (!target) {
+          const dates = uniqueDates(state.calls, 'Date and Time').sort();
+          target = dates[dates.length - 1] || null;
+          if (target) $('#calls-date').value = target;
+        }
+
+        const isMissed = r => String(r['Call Status'] || '').toLowerCase() === 'abandoned'
+          && String(r['Customer Status'] || '').toLowerCase() === 'connected';
+        const isAbandnd = r => String(r['Call Status'] || '').toLowerCase() === 'abandoned'
+          && String(r['Customer Status'] || '').toLowerCase() === 'not connected';
+
+        // Helper to render one region's summary + call lists for the filter date
+        function renderRegion(suffix, regionCalls) {
+          const day = regionCalls.filter(r => {
+            const d = parseDate(r['Date and Time']);
+            return d && dateKey(d) === target;
+          });
+          const missedRows = day.filter(isMissed);
+          const abandnRows = day.filter(isAbandnd);
+          const nwhRows = missedRows.filter(r => {
+            const d = parseDate(r['Date and Time']);
+            return d && !isWorkingHours(d);
+          });
+          const totalCalls = day.length;
+          const missedCnt = missedRows.length;
+          const abandnCnt = abandnRows.length;
+          const missedPct = totalCalls ? (missedCnt / totalCalls * 100) : 0;
+          $('#calls-summary-' + suffix).innerHTML = `
+      <div class="stat-tile"><div class="lbl">Total Calls</div><div class="val">${totalCalls}</div></div>
+      <div class="stat-tile bad"><div class="lbl">Missed Calls</div><div class="val">${missedCnt}</div></div>
+      <div class="stat-tile warn"><div class="lbl">Abandoned Calls</div><div class="val">${abandnCnt}</div></div>
+      <div class="stat-tile warn"><div class="lbl">Missed %</div><div class="val">${missedPct.toFixed(2)}%</div></div>
+    `;
+          $('#calls-missed-' + suffix).innerHTML = trialTable(groupByCustomer(missedRows), 'No missed calls 🎉');
+          $('#calls-abandoned-' + suffix).innerHTML = trialTable(groupByCustomer(abandnRows), 'No abandoned calls 🎉');
+          $('#calls-nwh-' + suffix).innerHTML = trialTable(groupByCustomer(nwhRows), 'No missed calls in non-working hours');
+        }
+
+        renderRegion('delhi', delhiCalls);
+        renderRegion('blr', blrCalls);
+
+        // Agent avg talk time — split by region (D-1 + MTD for each)
+        const dayDelhi = delhiCalls.filter(r => {
+          const d = parseDate(r['Date and Time']);
+          return d && dateKey(d) === target;
+        });
+        const dayBlr = blrCalls.filter(r => {
+          const d = parseDate(r['Date and Time']);
+          return d && dateKey(d) === target;
+        });
+        $('#calls-agents-d1-delhi').innerHTML = agentTable(avgTalkTimeBy(dayDelhi));
+        $('#calls-agents-mtd-delhi').innerHTML = agentTable(avgTalkTimeBy(delhiCalls));
+        $('#calls-agents-d1-blr').innerHTML = agentTable(avgTalkTimeBy(dayBlr));
+        $('#calls-agents-mtd-blr').innerHTML = agentTable(avgTalkTimeBy(blrCalls));
+      }
+
+      /* ===========================================================
+         MAPPINGS DISPLAY
+         =========================================================== */
+      function renderMappings() {
+        function pairTable(obj, h1, h2) {
+          let h = `<table class="small-table"><thead><tr><th>${h1}</th><th>${h2}</th></tr></thead><tbody>`;
+          Object.entries(obj).forEach(([k, v]) => h += `<tr><td>${k}</td><td>${v}</td></tr>`);
+          h += '</tbody></table>';
+          return h;
+        }
+        $('#map-source').innerHTML = pairTable(SOURCE_MAP, 'Raw Patient Source', 'Custom Source');
+        $('#map-zone').innerHTML = pairTable(ZONE_MAP, 'Raw Zone', 'Custom Zone');
+        $('#map-stage-disp').innerHTML = pairTable(STAGE_DISP_MAP, 'Patient Stage', 'Disposition Column');
+        $('#map-stage-cat').innerHTML = pairTable(STAGE_CAT_MAP, 'Patient Stage', 'Lead/OPD/IPD');
+      }
+
+      /* ===========================================================
+         EXPORT TO EXCEL
+         =========================================================== */
+      function exportToExcel() {
+        if (!state.mtd) { alert('Process data first.'); return; }
+
+        const wb = XLSX.utils.book_new();
+
+        // Source-wise Delhi
+        function sheetFromHTML(htmlString, sheetName) {
+          const wrap = document.createElement('div');
+          wrap.innerHTML = htmlString;
+          const tbl = wrap.querySelector('table');
+          if (!tbl) return;
+          const ws = XLSX.utils.table_to_sheet(tbl);
+          XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        }
+        sheetFromHTML(buildSourceTable('Delhi', SOURCE_ROWS_DELHI), 'Source - Delhi');
+        sheetFromHTML(buildSourceTable('Bangalore', SOURCE_ROWS_BLR), 'Source - Blr');
+        const delhiRows = state.mtd.filter(r => !BLR_SOURCES.has(customSource(r['Patient Source'])));
+        const blrRows = state.mtd.filter(r => BLR_SOURCES.has(customSource(r['Patient Source'])));
+        sheetFromHTML(buildDispositionTable(delhiRows, SOURCE_ROWS_DELHI), 'Disposition - Delhi');
+        sheetFromHTML(buildDispositionTable(blrRows, SOURCE_ROWS_BLR), 'Disposition - Blr');
+        sheetFromHTML($('#zone-table').innerHTML, 'Zone-wise');
+
+        const fname = 'Oncare_Dashboard_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+        XLSX.writeFile(wb, fname);
+      }
+
+      /* ===========================================================
+         TAB SWITCHING
+         =========================================================== */
+      function switchTab(name) {
+        $$('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+        $$('.tab-content').forEach(s => s.classList.toggle('active', s.id === 'tab-' + name));
+      }
+
+      /* ===========================================================
+         INIT
+         =========================================================== */
+      window.addEventListener('DOMContentLoaded', () => {
+        // Build stamp — if you don't see this on the page, you're loading a cached old copy.
+        const bs = document.getElementById('build-stamp');
+        if (bs) bs.textContent = 'build: ' + (window.__BUILD__ || 'unknown');
+        // Sanity check: log that the new handler is loaded
+        console.log('[oncare-dashboard] build:', window.__BUILD__);
+        console.log('[oncare-dashboard] XLSX library loaded:', typeof XLSX !== 'undefined');
+        console.log('[oncare-dashboard] PapaParse loaded:', typeof Papa !== 'undefined');
+        setupDropZone('dz-mtd', 'file-mtd', 'mtd');
+        setupDropZone('dz-calls', 'file-calls', 'calls');
+        document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+        const repSel = document.getElementById('report-selector');
+        if (repSel) repSel.addEventListener('change', e => switchReportPane(e.target.value));
+        ['#src-from', '#src-to', '#disp-from', '#disp-to', '#zone-from', '#zone-to', '#bd-from', '#bd-to'].forEach(sel => {
+          const el = document.querySelector(sel); if (!el) return;
+          if (sel.startsWith('#src-')) el.addEventListener('change', renderSourceWise);
+          else if (sel.startsWith('#disp-')) el.addEventListener('change', renderDisposition);
+          else if (sel.startsWith('#zone-')) el.addEventListener('change', renderZoneWise);
+          else if (sel.startsWith('#bd-')) el.addEventListener('change', renderBdReports);
+        });
+        const d1DateEl = document.getElementById('d1-date');
+        if (d1DateEl) d1DateEl.addEventListener('change', renderD1);
+        const callsDateEl = document.getElementById('calls-date');
+        if (callsDateEl) callsDateEl.addEventListener('change', renderCalls);
+        const bdSel = document.getElementById('bd-selector');
+        if (bdSel) bdSel.addEventListener('change', e => {
+          const v = e.target.value;
+          const a = document.getElementById('bd-pane-l2o-l2i');
+          const b = document.getElementById('bd-pane-owner-wise');
+          if (a) a.style.display = (v === 'l2o-l2i') ? '' : 'none';
+          if (b) b.style.display = (v === 'owner-wise') ? '' : 'none';
+        });
+        ['social-from', 'social-to'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('change', renderSocial);
+        });
+        try { loadStateFromStorage(); } catch (e) { console.warn('loadStateFromStorage:', e && e.message); }
+        try { loadSheetsSettings(); } catch (e) { console.warn('loadSheetsSettings:', e && e.message); }
+        try { renderSocial(); } catch (e) { console.warn('renderSocial:', e && e.message); }
+        try { if (typeof startMidnightWatcher === 'function') startMidnightWatcher(); } catch (e) { console.warn('startMidnightWatcher:', e && e.message); }
+        const restoreInput = document.getElementById('file-restore');
+        if (restoreInput) restoreInput.addEventListener('change', e => {
+          if (restoreInput.files && restoreInput.files[0]) restoreFromBackup(restoreInput.files[0]);
+        });
+      });
+    </script>
+</body>
+
+</html> 
