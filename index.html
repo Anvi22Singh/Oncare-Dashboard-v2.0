@@ -3197,11 +3197,13 @@
           ? ['Website', 'Inbound Phone-Google', 'Inbound Phone - SEO Old']
           : ['Website Blr', 'Google Inbound - Blr'];
         const mergeSpan = mergeGroup.length;
-        let regionMergeSpend = 0, regionMergeCpl = 0;
+        // Cluster leads = sum of MTD leads across the merged GA sources (from LeadSquared).
+        let clusterLeads = 0;
+        mergeGroup.forEach(src => { const a = mtdAgg.get(src); if (a) clusterLeads += a.total; });
+        let regionMergeSpend = 0;
         if (adsAvailable) {
           const reg = (region === 'Delhi') ? adsDelhiSearch : adsBlrSearch;
           regionMergeSpend = reg.spend * (1 + GST_RATE);
-          regionMergeCpl = reg.cplAvg !== null ? reg.cplAvg : 0;
         } else {
           mergeGroup.forEach(src => {
             const k = region + '::' + src;
@@ -3209,11 +3211,11 @@
             if (sp) {
               const v = (sp.totalSpend !== '' && sp.totalSpend !== undefined) ? Number(sp.totalSpend) : 0;
               if (!isNaN(v)) regionMergeSpend += v * (1 + GST_RATE);
-              const c = (sp.cpl !== '' && sp.cpl !== undefined) ? Number(sp.cpl) : 0;
-              if (!isNaN(c)) regionMergeCpl += c;
             }
           });
         }
+        // CPL = cluster spend (incl GST) ÷ cluster leads.
+        const regionMergeCpl = clusterLeads > 0 ? regionMergeSpend / clusterLeads : 0;
 
         let html = '<table><thead><tr>' +
           '<th>Source Type</th><th>Source</th>' +
@@ -3251,10 +3253,10 @@
               tspend = null;
             } else if (r.name === 'GDN') {
               // GDN: spend from ads (Video + DEMAND_GEN + Display, Delhi NCR)
-              // CPL = spend (excl GST) ÷ GDN leads from LeadSquared (MTD)
+              // CPL = spend (incl GST) ÷ GDN leads from LeadSquared (MTD)
               tspend = adsDelhiGdn.spend * (1 + GST_RATE);
               if (tspend === 0) tspend = null;
-              cpl = (adsDelhiGdn.spend > 0 && m.total > 0) ? adsDelhiGdn.spend / m.total : null;
+              cpl = (tspend && m.total > 0) ? tspend / m.total : null;
             }
           }
 
@@ -3588,13 +3590,13 @@
           if (r.name === 'Inbound Phone - SEO Old') {
             cpl = null;  // intentionally blank
           } else if (regionGaSources.has(r.name) && adsAvailable && d1Date) {
-            // GA cluster source — D-1 CPL = (Search spend on yesterday) ÷ (cluster leads on yesterday)
+            // GA cluster source — D-1 CPL = (Search spend incl GST on yesterday) ÷ (cluster leads on yesterday)
             // Cluster leads = sum of D-1 leads from Website + IPG + SEO Old (Delhi) or Website Blr + GI Blr (Bangalore)
             const adsForRegion = (region === 'Delhi') ? adsD1DelhiSearch : adsD1BlrSearch;
-            cpl = (adsForRegion && clusterD1Leads > 0) ? adsForRegion.spend / clusterD1Leads : null;
+            cpl = (adsForRegion && clusterD1Leads > 0) ? (adsForRegion.spend * (1 + GST_RATE)) / clusterD1Leads : null;
           } else if (r.name === 'GDN' && adsAvailable && d1Date) {
-            // CPL = D-1 GDN spend (excl GST) ÷ D-1 GDN leads from LeadSquared
-            cpl = (adsD1Gdn && adsD1Gdn.spend > 0 && m.total > 0) ? adsD1Gdn.spend / m.total : null;
+            // CPL = D-1 GDN spend (incl GST) ÷ D-1 GDN leads from LeadSquared
+            cpl = (adsD1Gdn && adsD1Gdn.spend > 0 && m.total > 0) ? (adsD1Gdn.spend * (1 + GST_RATE)) / m.total : null;
           } else if (FIXED_SPEND_INCL_GST[r.name] !== undefined) {
             // Justdial / Practo — monthly fixed spend pro-rated to ONE day ÷ D-1 leads
             let oneDaySpend = FIXED_SPEND_INCL_GST[r.name];
