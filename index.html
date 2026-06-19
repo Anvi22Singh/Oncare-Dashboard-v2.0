@@ -2210,7 +2210,7 @@
       }
 
       function renderBdReports() {
-        if (!state.mtd) {
+        if (!state.raw) {
           $('#bd-l2o-delhi').innerHTML = '<p class="small-muted">Upload the LeadSquared dump first.</p>';
           $('#bd-l2o-blr').innerHTML = '';
           return;
@@ -2221,8 +2221,8 @@
           if (r) { $('#bd-from').value = r.from; $('#bd-to').value = r.to; }
         }
         const from = $('#bd-from').value, to = $('#bd-to').value;
-        // Filter Lead rows to range
-        const leads = filterByDateRange(state.mtd, from, to, 'Created On');
+        // Lead rows = full dump filtered by Created On in [from, to]
+        const leads = filterByDateRange(state.raw, from, to, 'Created On');
         // Tracker counts per source (use Opd Date / IPD DATE columns)
         const opdMap = countTrackerBySource(getAllOpd(), 'Opd Date', 'ORIGINAL SOURCE', from, to);
         const ipdMap = countTrackerBySource(state.ipd, 'IPD DATE', 'ORIGINAL SOURCE', from, to);
@@ -2399,7 +2399,7 @@
       }
 
       function renderOwnerWiseReport() {
-        if (!state.mtd) {
+        if (!state.raw) {
           ['#owner-actuals-all', '#owner-actuals-paid', '#owner-pct-all', '#owner-pct-paid'].forEach(id => {
             const el = $(id); if (el) el.innerHTML = '<p class="small-muted">Upload LeadSquared dump first.</p>';
           });
@@ -2408,7 +2408,9 @@
         const from = $('#bd-from').value, to = $('#bd-to').value;
         const yearHint = state.refMonth ? parseInt(state.refMonth.split('-')[0]) : null;
 
-        const leadsAll = filterByDateRange(state.mtd, from, to, 'Created On');
+        // This report is driven ENTIRELY by the From/To date range applied to 'Created On',
+        // across the FULL uploaded dump (state.raw) — not limited to the auto-detected month.
+        const leadsAll = filterByDateRange(state.raw, from, to, 'Created On');
         const leadsPaid = leadsAll.filter(r => PAID_SOURCES.has(customSource(r['Patient Source'])));
 
         const filterTracker = (rows, dateField, paidOnly) => {
@@ -3118,23 +3120,24 @@
         // Apply From/To date range filter if the user picked dates
         const fromVal = $('#src-from').value;
         const toVal = $('#src-to').value;
-        let mtdRows = state.mtd || [];
-        let lmtdRows = state.lmtd || [];
+        let mtdRows, lmtdRows;
         if (fromVal || toVal) {
-          // Current-month column: rows whose date falls in [from, to].
-          // LMTD column: mirror the same day-of-month window in the previous month.
+          // CURRENT column: every dump lead with Created On in [from, to] (full dump, not month-limited).
+          mtdRows = filterByDateRange(state.raw || [], fromVal, toVal, 'Created On');
+          // LMTD column: same day-of-month window, one calendar month before the selected range.
           const fromDay = fromVal ? new Date(fromVal).getDate() : 1;
           const toDay = toVal ? new Date(toVal).getDate() : 31;
-          mtdRows = mtdRows.filter(r => {
+          const refD = new Date(fromVal || toVal);
+          const py = refD.getMonth() === 0 ? refD.getFullYear() - 1 : refD.getFullYear();
+          const pm = refD.getMonth() === 0 ? 11 : refD.getMonth() - 1;
+          lmtdRows = (state.raw || []).filter(r => {
             const d = parseDate(r['Created On']);
-            if (!d) return false;
-            const k = dateKey(d);
-            return (!fromVal || k >= fromVal) && (!toVal || k <= toVal);
+            return d && d.getFullYear() === py && d.getMonth() === pm
+              && d.getDate() >= fromDay && d.getDate() <= toDay;
           });
-          lmtdRows = lmtdRows.filter(r => {
-            const d = parseDate(r['Created On']);
-            return d && d.getDate() >= fromDay && d.getDate() <= toDay;
-          });
+        } else {
+          mtdRows = state.mtd || [];
+          lmtdRows = state.lmtd || [];
         }
         const mtdAgg = aggregateBySource(mtdRows);
         const lmtdAgg = aggregateBySource(lmtdRows);
@@ -3404,7 +3407,7 @@
       }
 
       function renderSourceWise() {
-        if (!state.mtd) return;
+        if (!state.raw) return;
         // Visible ads-source indicator (separate element from the LMTD warning)
         const adsNote = $('#src-note-ads');
         if (state.ads && state.ads.length) {
@@ -3468,9 +3471,9 @@
       }
 
       function renderDisposition() {
-        if (!state.mtd) return;
+        if (!state.raw) return;
         const from = $('#disp-from').value, to = $('#disp-to').value;
-        const filtered = filterByDateRange(state.mtd, from, to, 'Created On');
+        const filtered = filterByDateRange(state.raw, from, to, 'Created On');
         const delhiRows = filtered.filter(r => !BLR_SOURCES.has(customSource(r['Patient Source'])));
         const blrRows = filtered.filter(r => BLR_SOURCES.has(customSource(r['Patient Source'])));
         $('#disp-delhi').innerHTML = buildDispositionTable(delhiRows, SOURCE_ROWS_DELHI);
@@ -3481,9 +3484,9 @@
          ZONE-WISE
          =========================================================== */
       function renderZoneWise() {
-        if (!state.mtd) return;
+        if (!state.raw) return;
         const from = $('#zone-from').value, to = $('#zone-to').value;
-        const filtered = filterByDateRange(state.mtd, from, to, 'Created On');
+        const filtered = filterByDateRange(state.raw, from, to, 'Created On');
         const counts = {};
         ZONE_ROWS.forEach(z => counts[z] = 0);
         let unmapped = 0, blank = 0;
@@ -3515,15 +3518,15 @@
          D-1 REPORT
          =========================================================== */
       function renderD1() {
-        if (!state.mtd) return;
+        if (!state.raw) return;
         let target = $('#d1-date').value;
         if (!target) {
-          // Default: most recent date in data
-          const dates = uniqueDates(state.mtd, 'Created On').sort();
+          // Default: most recent date in the full dump
+          const dates = uniqueDates(state.raw, 'Created On').sort();
           target = dates[dates.length - 1] || null;
           if (target) $('#d1-date').value = target;
         }
-        const filter = state.mtd.filter(r => {
+        const filter = state.raw.filter(r => {
           const d = parseDate(r['Created On']);
           return d && dateKey(d) === target;
         });
@@ -3969,7 +3972,7 @@
          EXPORT TO EXCEL
          =========================================================== */
       function exportToExcel() {
-        if (!state.mtd) { alert('Process data first.'); return; }
+        if (!state.raw) { alert('Process data first.'); return; }
 
         const wb = XLSX.utils.book_new();
 
@@ -3984,8 +3987,9 @@
         }
         sheetFromHTML(buildSourceTable('Delhi', SOURCE_ROWS_DELHI), 'Source - Delhi');
         sheetFromHTML(buildSourceTable('Bangalore', SOURCE_ROWS_BLR), 'Source - Blr');
-        const delhiRows = state.mtd.filter(r => !BLR_SOURCES.has(customSource(r['Patient Source'])));
-        const blrRows = state.mtd.filter(r => BLR_SOURCES.has(customSource(r['Patient Source'])));
+        const dispRows = filterByDateRange(state.raw, $('#disp-from').value, $('#disp-to').value, 'Created On');
+        const delhiRows = dispRows.filter(r => !BLR_SOURCES.has(customSource(r['Patient Source'])));
+        const blrRows = dispRows.filter(r => BLR_SOURCES.has(customSource(r['Patient Source'])));
         sheetFromHTML(buildDispositionTable(delhiRows, SOURCE_ROWS_DELHI), 'Disposition - Delhi');
         sheetFromHTML(buildDispositionTable(blrRows, SOURCE_ROWS_BLR), 'Disposition - Blr');
         sheetFromHTML($('#zone-table').innerHTML, 'Zone-wise');
