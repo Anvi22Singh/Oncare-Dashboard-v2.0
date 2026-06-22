@@ -1278,9 +1278,9 @@
         "Inbound SEO old": "Inbound Phone - SEO Old",
         "Social Media Inbound": "Social Media Inbound",
         "Social Media": "Social Media",
-        "Social media Test": "Social Media Test",
-        "Social Media Test": "Social Media Test",
-        "Social Media - DEL Leadform": "Social Media Test",
+        "Social media Test": "Social Media - DEL Leadform",
+        "Social Media Test": "Social Media - DEL Leadform",
+        "Social Media - DEL Leadform": "Social Media - DEL Leadform",
         "Social Media - BLR": "Social Media - BLR",
         "Social Media - Blr": "Social Media - BLR",
         "Social Media Blr": "Social Media - BLR",
@@ -1416,7 +1416,7 @@
         { name: "Inbound Phone - SEO Old", type: "Paid" },
         { name: "Social Media", type: "Paid" },
         { name: "Social Media Inbound", type: "Paid" },
-        { name: "Social Media Test", type: "Paid" },
+        { name: "Social Media - DEL Leadform", type: "Paid" },
         { name: "Whatsapp - Paid", type: "Paid" },
         { name: "Justdial", type: "Paid" },
         { name: "GMB Trinity", type: "Paid" },
@@ -1466,7 +1466,7 @@
         'Practo',
         'Social Media',
         'Social Media Inbound',
-        'Social Media Test',
+        'Social Media - DEL Leadform',
         'Social Media - BLR',
         'Whatsapp - Paid'
       ]);
@@ -2771,7 +2771,7 @@
          Mapping (case-insensitive, substring match on CUSTOM):
            awareness            → Awareness Meta
            blr                  → Social Media - BLR
-           leadgen              → Social Media Test
+           leadgen              → Social Media - DEL Leadform
            inbound              → Social Media Inbound
            whatsapp             → Whatsapp - Paid
            website              → Social Media
@@ -2783,7 +2783,7 @@
       const SOCIAL_BUCKETS = [
         'Social Media',
         'Social Media Inbound',
-        'Social Media Test',
+        'Social Media - DEL Leadform',
         'Whatsapp - Paid',
         'Awareness Meta',
         'Social Media - BLR'
@@ -2797,7 +2797,7 @@
         if (!v) return null;
         if (v.includes('awareness')) return 'Awareness Meta';
         if (v.includes('blr')) return 'Social Media - BLR';
-        if (v.includes('leadgen') || v.includes('lead gen')) return 'Social Media Test';
+        if (v.includes('leadgen') || v.includes('lead gen')) return 'Social Media - DEL Leadform';
         if (v.includes('inbound')) return 'Social Media Inbound';
         if (v.includes('whatsapp') || v.includes('insta')) return 'Whatsapp - Paid';
         if (v.includes('website')) return 'Social Media';
@@ -3626,7 +3626,7 @@
             }
           } else {
             // Manual CPL — editable inline in this D-1 cell. Stored under sp.cplD1.
-            // Applies to Social Media, Social Media Inbound, Social Media Test, Whatsapp - Paid,
+            // Applies to Social Media, Social Media Inbound, Social Media - DEL Leadform, Whatsapp - Paid,
             // and all other non-auto sources.
             cpl = (sp.cplD1 !== '' && sp.cplD1 !== undefined && sp.cplD1 !== null) ? Number(sp.cplD1) : null;
             if (isNaN(cpl)) cpl = null;
