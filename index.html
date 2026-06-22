@@ -863,7 +863,7 @@
           </div>
           <div>
             <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📱 Social Media Sheet —
-              URL <span class="small-muted">(Social Media · Inbound · Test · WhatsApp-FB/Insta · Awareness Meta ·
+              URL <span class="small-muted">(Social Media · Inbound · Test · Whatsapp - Paid · Awareness Meta ·
                 BLR)</span></label>
             <input type="text" id="gs-social-url" placeholder="https://docs.google.com/spreadsheets/d/..."
               style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
@@ -1266,15 +1266,21 @@
         "Google Inbound Call Extension": "Inbound Phone-Google",
         "Website": "Website",
         "Google - Form": "Website",
-        "WhatsApp FB": "Whatsapp-FB/Whatsapp & Insta",
-        "WhatsApp": "Whatsapp-FB/Whatsapp & Insta",
-        "Facebook": "Whatsapp-FB/Whatsapp & Insta",
-        "FB Lead Ads": "Whatsapp-FB/Whatsapp & Insta",
+        "WhatsApp FB": "Whatsapp - Paid",
+        "WhatsApp": "Whatsapp - Paid",
+        "Facebook": "Whatsapp - Paid",
+        "FB Lead Ads": "Whatsapp - Paid",
+        "Whatsapp - Paid": "Whatsapp - Paid",
+        "Whatsapp-FB/Whatsapp & Insta": "Whatsapp - Paid",
+        "WhatsApp FB ": "Whatsapp - Paid",
+        "Whatsapp FB": "Whatsapp - Paid",
+        "Whatsapp": "Whatsapp - Paid",
         "Inbound SEO old": "Inbound Phone - SEO Old",
         "Social Media Inbound": "Social Media Inbound",
         "Social Media": "Social Media",
         "Social media Test": "Social Media Test",
         "Social Media Test": "Social Media Test",
+        "Social Media - DEL Leadform": "Social Media Test",
         "Social Media - BLR": "Social Media - BLR",
         "Social Media - Blr": "Social Media - BLR",
         "Social Media Blr": "Social Media - BLR",
@@ -1411,7 +1417,7 @@
         { name: "Social Media", type: "Paid" },
         { name: "Social Media Inbound", type: "Paid" },
         { name: "Social Media Test", type: "Paid" },
-        { name: "Whatsapp-FB/Whatsapp & Insta", type: "Paid" },
+        { name: "Whatsapp - Paid", type: "Paid" },
         { name: "Justdial", type: "Paid" },
         { name: "GMB Trinity", type: "Paid" },
         { name: "Practo", type: "Paid" },
@@ -1462,7 +1468,7 @@
         'Social Media Inbound',
         'Social Media Test',
         'Social Media - BLR',
-        'Whatsapp-FB/Whatsapp & Insta'
+        'Whatsapp - Paid'
       ]);
 
       // Google Ads cluster — split by region. CAC is cumulative WITHIN each region.
@@ -1480,7 +1486,7 @@
       const DEFAULT_BENCHMARKS = {
         "Delhi::Website": 70,
         "Delhi::Inbound Phone-Google": 70,
-        "Delhi::Whatsapp-FB/Whatsapp & Insta": 25,
+        "Delhi::Whatsapp - Paid": 25,
         "Delhi::Inbound Phone - SEO Old": 40,
         "Delhi::Justdial": 35,
         "Delhi::Social Media": 30,
@@ -2767,7 +2773,7 @@
            blr                  → Social Media - BLR
            leadgen              → Social Media Test
            inbound              → Social Media Inbound
-           whatsapp             → WhatsApp-FB / WhatsApp & Insta
+           whatsapp             → Whatsapp - Paid
            website              → Social Media
          =========================================================== */
 
@@ -2778,7 +2784,7 @@
         'Social Media',
         'Social Media Inbound',
         'Social Media Test',
-        'Whatsapp-FB/Whatsapp & Insta',
+        'Whatsapp - Paid',
         'Awareness Meta',
         'Social Media - BLR'
       ];
@@ -2793,7 +2799,7 @@
         if (v.includes('blr')) return 'Social Media - BLR';
         if (v.includes('leadgen') || v.includes('lead gen')) return 'Social Media Test';
         if (v.includes('inbound')) return 'Social Media Inbound';
-        if (v.includes('whatsapp') || v.includes('insta')) return 'Whatsapp-FB/Whatsapp & Insta';
+        if (v.includes('whatsapp') || v.includes('insta')) return 'Whatsapp - Paid';
         if (v.includes('website')) return 'Social Media';
         return null;
       }
@@ -3620,7 +3626,7 @@
             }
           } else {
             // Manual CPL — editable inline in this D-1 cell. Stored under sp.cplD1.
-            // Applies to Social Media, Social Media Inbound, Social Media Test, Whatsapp-FB,
+            // Applies to Social Media, Social Media Inbound, Social Media Test, Whatsapp - Paid,
             // and all other non-auto sources.
             cpl = (sp.cplD1 !== '' && sp.cplD1 !== undefined && sp.cplD1 !== null) ? Number(sp.cplD1) : null;
             if (isNaN(cpl)) cpl = null;
