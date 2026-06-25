@@ -2636,7 +2636,8 @@
             .catch(e => { throw new Error('Ads: ' + e.message); })
         );
         if (socialId && socialTab) tasks.push(
-          fetchSheetRows(socialId, socialTab, apiKey).then(rows => { state.social = rows; return ['Social', rows.length]; })
+          // Wider range (A1:BZ) so the CUSTOM column at AH (past Z) is included.
+          fetchSheetRows(socialId, socialTab, apiKey, 'A1:BZ50000').then(rows => { state.social = rows; return ['Social', rows.length]; })
             .catch(e => { throw new Error('Social: ' + e.message); })
         );
         try {
