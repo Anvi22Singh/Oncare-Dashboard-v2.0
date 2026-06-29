@@ -1287,6 +1287,8 @@
         "Social Media BLR": "Social Media - BLR",
         "Social Media-BLR": "Social Media - BLR",
         "Social Media-Blr": "Social Media - BLR",
+        "Brand Video Blr": "Brand Video Blr",
+        "Brand Video Delhi": "Brand Video Delhi",
         "Inbound Phone call": "Inbound Phone-Call",
         "GMB South Delhi": "GMB Total",
         "GMB Gurgaon": "GMB Total",
@@ -1405,7 +1407,7 @@
       // Bangalore (Blr) sources - all others are Delhi
       const BLR_SOURCES = new Set([
         "Website Blr", "Google Inbound - Blr", "Inbound SEO Blr",
-        "SEO Blr", "Offline Flex/Hoardings - Blr", "Social Media - BLR"
+        "SEO Blr", "Offline Flex/Hoardings - Blr", "Social Media - BLR", "Brand Video Blr"
       ]);
 
       // Source row order + Paid/Free classification per your screenshots
@@ -1424,6 +1426,7 @@
         { name: "GDN", type: "Paid" },
         { name: "Awareness GDN", type: "Paid" },
         { name: "Awareness Meta", type: "Paid" },
+        { name: "Brand Video Delhi", type: "Paid" },
         { name: "GZB Branding", type: "Paid" },
         { name: "Offline flex/Hoardings", type: "Paid" },
         // Free
@@ -1444,6 +1447,7 @@
         { name: "Website Blr", type: "Paid" },
         { name: "Google Inbound - Blr", type: "Paid" },
         { name: "Social Media - BLR", type: "Paid" },
+        { name: "Brand Video Blr", type: "Paid" },
         { name: "Inbound SEO Blr", type: "Free" },
         { name: "SEO Blr", type: "Free" },
         { name: "Offline Flex/Hoardings - Blr", type: "Free" }
@@ -1468,7 +1472,9 @@
         'Social Media Inbound',
         'Social Media - DEL Leadform',
         'Social Media - BLR',
-        'Whatsapp - Paid'
+        'Whatsapp - Paid',
+        'Brand Video Delhi',
+        'Brand Video Blr'
       ]);
 
       // Google Ads cluster — split by region. CAC is cumulative WITHIN each region.
@@ -2787,7 +2793,9 @@
         'Social Media - DEL Leadform',
         'Whatsapp - Paid',
         'Awareness Meta',
-        'Social Media - BLR'
+        'Social Media - BLR',
+        'Brand Video Delhi',
+        'Brand Video Blr'
       ];
       // Quick lookup: is this report source fed by the Social Media sheet?
       const SOCIAL_SHEET_SOURCES = new Set(SOCIAL_BUCKETS);
@@ -2796,6 +2804,11 @@
       function mapSocialBucket(customVal) {
         const v = String(customVal || '').toLowerCase().trim();
         if (!v) return null;
+        // Brand Video must be checked BEFORE the generic 'blr' rule (the BLR value contains "blr").
+        if (v.includes('brand video') || v.includes('brand vid')) {
+          if (v.includes('blr') || v.includes('bangalore') || v.includes('blore') || v.includes('bengaluru')) return 'Brand Video Blr';
+          return 'Brand Video Delhi';
+        }
         if (v.includes('awareness')) return 'Awareness Meta';
         if (v.includes('blr')) return 'Social Media - BLR';
         if (v.includes('leadgen') || v.includes('lead gen') || v.includes('leadform') || v.includes('lead form')) return 'Social Media - DEL Leadform';
