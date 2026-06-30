@@ -1002,8 +1002,20 @@
           <h2>Zone-wise Lead Distribution</h2>
           <p class="small-muted">Zones are normalized using your Custom Zone mapping. See "Mapping Tables" tab for the
             full list.</p>
+          <div class="filter-row" style="margin-top:8px;align-items:flex-start;flex-wrap:wrap">
+            <label style="margin-top:6px">Patient Stage:</label>
+            <select id="zone-stage-filter" multiple size="6" style="min-width:240px;padding:4px;border:1px solid var(--border);border-radius:5px;font-size:12.5px"></select>
+            <button class="btn ghost" type="button" onclick="clearZoneStageFilter()" style="margin-top:4px">Clear (all stages)</button>
+            <span class="small-muted" style="margin-top:6px">Hold Ctrl / Cmd to pick multiple. Nothing selected = all stages.</span>
+          </div>
+          <div id="zone-blank-note" class="small-muted" style="margin:10px 0;padding:8px 12px;background:#ede9ff;border-radius:5px;display:inline-block"></div>
+          <h3 style="margin-top:6px;color:var(--primary-dark)">Delhi NCR <span class="badge delhi">Delhi</span></h3>
           <div class="table-wrap">
             <div id="zone-table"></div>
+          </div>
+          <h3 style="margin-top:22px;color:var(--primary-dark)">Bengaluru <span class="badge blr">Bangalore</span></h3>
+          <div class="table-wrap">
+            <div id="zone-table-blr"></div>
           </div>
         </div>
       </div>
@@ -1337,11 +1349,22 @@
         "Gurgaon": "Gurgaon",
         "Noida/Ghaziabad": "Ghaziabad/East Delhi",
         "East Delhi": "Ghaziabad/East Delhi",
-        "Hebbal": "Bengaluru",
-        "JP nagar": "Bengaluru",
-        "Electronic city": "Bengaluru",
-        "Bellandur": "Bengaluru",
-        "Whitefield": "Bengaluru",
+        "Hebbal": "Hebbal",
+        "JP nagar": "JP nagar",
+        "Electronic city": "Electronic city",
+        "Bellandur": "Bellandur",
+        "Whitefield": "Whitefield",
+        "Vijaya nagar": "Vijaya nagar",
+        "Vijayanagar": "Vijaya nagar",
+        "Banashankari": "Banashankari",
+        "Banashanhari": "Banashankari",
+        "HSR layout": "HSR layout",
+        "Indiranagar": "Indiranagar",
+        "Indira nagar": "Indiranagar",
+        "Malleshwaram": "Malleshwaram",
+        "Koramangala": "Koramangala",
+        "Koramangla": "Koramangala",
+        "Kalyan nagar": "Kalyan nagar",
         "Out of Delhi": "Out of Delhi",
         "Out of Bangalore": "Out of Bangalore"
       };
@@ -1501,10 +1524,16 @@
         "Bangalore::Social Media - BLR": 30
       };
 
-      const ZONE_ROWS = [
-        "Ghaziabad/East Delhi", "Gurgaon", "Noida/Greater Noida", "West Delhi", "South Delhi",
-        "Bengaluru", "Out of Delhi", "Out of Bangalore"
+      const ZONE_ROWS_DELHI = [
+        "Ghaziabad/East Delhi", "Gurgaon", "Noida/Greater Noida", "West Delhi", "South Delhi", "Out of Delhi"
       ];
+      const ZONE_ROWS_BLR = [
+        "Vijaya nagar", "Banashankari", "HSR layout", "Indiranagar", "Whitefield", "JP nagar",
+        "Malleshwaram", "Electronic city", "Hebbal", "Koramangala", "Bellandur", "Kalyan nagar",
+        "Out of Bangalore"
+      ];
+      // Combined list (used for counting + unmapped detection)
+      const ZONE_ROWS = [...ZONE_ROWS_DELHI, ...ZONE_ROWS_BLR];
 
       const DISP_COLS = [
         "DNP", "No response - Comms", "Follow Up", "Fresh Patient", "Govt Panels",
@@ -1841,7 +1870,11 @@
       function customZone(raw) {
         if (!raw) return null;
         const r = String(raw).trim();
-        return ZONE_MAP[r] || null;  // unmapped zones not counted
+        if (ZONE_MAP[r]) return ZONE_MAP[r];
+        // Case-insensitive fallback so casing differences in LeadSquared still match.
+        const lower = r.toLowerCase();
+        for (const k in ZONE_MAP) if (k.toLowerCase() === lower) return ZONE_MAP[k];
+        return null;  // unmapped zones not counted
       }
       // All 4 distance reasons -> these go to the "Patient Lost" disposition column
       // (legacy "out of delhi" bucket per Anvi's reason-mapping screenshot)
@@ -3503,10 +3536,36 @@
       /* ===========================================================
          ZONE-WISE
          =========================================================== */
+      // Fill the Patient Stage multi-select from the dump (preserving any current selection).
+      function populateZoneStageFilter() {
+        const sel = document.getElementById('zone-stage-filter');
+        if (!sel || !state.raw) return;
+        const prev = new Set([...sel.selectedOptions].map(o => o.value));
+        const stages = [...new Set(state.raw.map(r => (r['Patient Stage'] || '').trim()).filter(Boolean))].sort();
+        sel.innerHTML = stages.map(s => {
+          const esc = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+          return `<option value="${esc}"${prev.has(s) ? ' selected' : ''}>${esc}</option>`;
+        }).join('');
+      }
+      function clearZoneStageFilter() {
+        const sel = document.getElementById('zone-stage-filter');
+        if (sel) sel.selectedIndex = -1;
+        renderZoneWise();
+      }
+
       function renderZoneWise() {
         if (!state.raw) return;
         const from = $('#zone-from').value, to = $('#zone-to').value;
-        const filtered = filterByDateRange(state.raw, from, to, 'Created On');
+        let filtered = filterByDateRange(state.raw, from, to, 'Created On');
+
+        // Patient Stage multi-select filter (none selected = all stages).
+        populateZoneStageFilter();
+        const stageSel = document.getElementById('zone-stage-filter');
+        const selectedStages = stageSel ? new Set([...stageSel.selectedOptions].map(o => o.value)) : new Set();
+        if (selectedStages.size) {
+          filtered = filtered.filter(r => selectedStages.has((r['Patient Stage'] || '').trim()));
+        }
+
         const counts = {};
         ZONE_ROWS.forEach(z => counts[z] = 0);
         let unmapped = 0, blank = 0;
@@ -3518,20 +3577,29 @@
           else unmapped++;
         });
 
-        let html = '<table style="max-width:480px"><thead><tr><th>ZONE</th><th class="num">No. of Leads</th></tr></thead><tbody>';
-        let total = 0;
-        ZONE_ROWS.forEach(z => {
-          html += `<tr><td>${z}</td><td class="num">${counts[z]}</td></tr>`;
-          total += counts[z];
-        });
-        html += `<tr class="total"><td>TOTAL</td><td class="num">${total}</td></tr></tbody></table>`;
-        if (blank || unmapped) {
-          html += `<p class="small-muted" style="margin-top:8px">
-      <span class="pill">Blank Zone: ${blank}</span>
-      <span class="pill">Unmapped Zone values: ${unmapped}</span>
-    </p>`;
+        // Build one zone table for a given list of zone rows.
+        function zoneTable(rows) {
+          let html = '<table style="max-width:480px"><thead><tr><th>ZONE</th><th class="num">No. of Leads</th></tr></thead><tbody>';
+          let total = 0;
+          rows.forEach(z => {
+            html += `<tr><td>${z}</td><td class="num">${counts[z] || 0}</td></tr>`;
+            total += counts[z] || 0;
+          });
+          html += `<tr class="total"><td>TOTAL</td><td class="num">${total}</td></tr></tbody></table>`;
+          return html;
         }
-        $('#zone-table').innerHTML = html;
+
+        $('#zone-table').innerHTML = zoneTable(ZONE_ROWS_DELHI);
+        $('#zone-table-blr').innerHTML = zoneTable(ZONE_ROWS_BLR);
+
+        const stageLabel = selectedStages.size ? `${selectedStages.size} stage(s) selected` : 'all stages';
+        const noteEl = document.getElementById('zone-blank-note');
+        if (noteEl) {
+          noteEl.innerHTML =
+            `Leads in view (${stageLabel}): <b>${filtered.length}</b>` +
+            ` &nbsp;·&nbsp; 🚫 No zone mentioned (blank): <b>${blank}</b>` +
+            ` &nbsp;·&nbsp; ⚠️ Unmapped zone values: <b>${unmapped}</b>`;
+        }
       }
 
       /* ===========================================================
@@ -4012,7 +4080,8 @@
         const blrRows = dispRows.filter(r => BLR_SOURCES.has(customSource(r['Patient Source'])));
         sheetFromHTML(buildDispositionTable(delhiRows, SOURCE_ROWS_DELHI), 'Disposition - Delhi');
         sheetFromHTML(buildDispositionTable(blrRows, SOURCE_ROWS_BLR), 'Disposition - Blr');
-        sheetFromHTML($('#zone-table').innerHTML, 'Zone-wise');
+        sheetFromHTML($('#zone-table').innerHTML, 'Zone - Delhi');
+        sheetFromHTML($('#zone-table-blr').innerHTML, 'Zone - Blr');
 
         const fname = 'Oncare_Dashboard_' + new Date().toISOString().slice(0, 10) + '.xlsx';
         XLSX.writeFile(wb, fname);
@@ -4049,6 +4118,8 @@
           else if (sel.startsWith('#zone-')) el.addEventListener('change', renderZoneWise);
           else if (sel.startsWith('#bd-')) el.addEventListener('change', renderBdReports);
         });
+        const zoneStageEl = document.getElementById('zone-stage-filter');
+        if (zoneStageEl) zoneStageEl.addEventListener('change', renderZoneWise);
         const d1DateEl = document.getElementById('d1-date');
         if (d1DateEl) d1DateEl.addEventListener('change', renderD1);
         const callsDateEl = document.getElementById('calls-date');
