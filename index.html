@@ -874,6 +874,30 @@
             <input type="text" id="gs-social-tab" placeholder="Social Media"
               style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
           </div>
+          <div>
+            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📁 LeadSquared Leads
+              Sheet — URL <span class="small-muted">(same columns as the dump)</span></label>
+            <input type="text" id="gs-leads-url" placeholder="https://docs.google.com/spreadsheets/d/..."
+              style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
+          </div>
+          <div>
+            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📁 LeadSquared Leads — Tab
+              Name</label>
+            <input type="text" id="gs-leads-tab" placeholder="Leads"
+              style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
+          </div>
+          <div>
+            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📞 Knowlarity Calls Sheet
+              — URL <span class="small-muted">(same columns as the call dump)</span></label>
+            <input type="text" id="gs-calls-url" placeholder="https://docs.google.com/spreadsheets/d/..."
+              style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
+          </div>
+          <div>
+            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📞 Knowlarity Calls — Tab
+              Name</label>
+            <input type="text" id="gs-calls-tab" placeholder="Calls"
+              style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
+          </div>
         </div>
         <div class="btn-row">
           <button class="btn" onclick="refreshFromSheets()">🔄 Refresh from Google Sheets</button>
@@ -2515,7 +2539,11 @@
         adsUrl: 'https://docs.google.com/spreadsheets/d/1eCuPpIISw_g2TeC_RwoLgsCW3pyZpKP5WtnMS1D79eo/edit?gid=970781166#gid=970781166',
         adsTab: 'ads',
         socialUrl: 'https://docs.google.com/spreadsheets/d/1ovI7ankbWaJEkcRuX1UdTmxciWb94_RvtdIsS2lM6lY/edit?gid=1943630881#gid=1943630881',
-        socialTab: 'syncwith data'
+        socialTab: 'syncwith data',
+        leadsUrl: 'https://docs.google.com/spreadsheets/d/1gmobzjlwc9602qMHaqdDK6mpeNa2opPpsKKrT5uRVkQ/edit?gid=47317899#gid=47317899',
+        leadsTab: 'Leads',
+        callsUrl: 'https://docs.google.com/spreadsheets/d/1gmobzjlwc9602qMHaqdDK6mpeNa2opPpsKKrT5uRVkQ/edit?gid=47317899#gid=47317899',
+        callsTab: 'Calls'
       };
 
       function applySheetsSettings(s) {
@@ -2530,6 +2558,10 @@
         if (s.adsTab) $('#gs-ads-tab').value = s.adsTab;
         if (s.socialUrl) $('#gs-social-url').value = s.socialUrl;
         if (s.socialTab) $('#gs-social-tab').value = s.socialTab;
+        if (s.leadsUrl) $('#gs-leads-url').value = s.leadsUrl;
+        if (s.leadsTab) $('#gs-leads-tab').value = s.leadsTab;
+        if (s.callsUrl) $('#gs-calls-url').value = s.callsUrl;
+        if (s.callsTab) $('#gs-calls-tab').value = s.callsTab;
       }
 
       function loadSheetsSettings() {
@@ -2554,14 +2586,18 @@
             adsUrl: $('#gs-ads-url').value.trim(),
             adsTab: $('#gs-ads-tab').value.trim(),
             socialUrl: $('#gs-social-url').value.trim(),
-            socialTab: $('#gs-social-tab').value.trim()
+            socialTab: $('#gs-social-tab').value.trim(),
+            leadsUrl: $('#gs-leads-url').value.trim(),
+            leadsTab: $('#gs-leads-tab').value.trim(),
+            callsUrl: $('#gs-calls-url').value.trim(),
+            callsTab: $('#gs-calls-tab').value.trim()
           }));
         } catch (e) { /* ignore */ }
       }
       function clearSheetsSettings() {
         if (!confirm('Clear saved API key and sheet URLs?')) return;
         localStorage.removeItem(GS_SETTINGS_KEY);
-        ['gs-api-key', 'gs-opd-url', 'gs-opd-tab', 'gs-opdblr-url', 'gs-opdblr-tab', 'gs-ipd-url', 'gs-ipd-tab', 'gs-ads-url', 'gs-ads-tab', 'gs-social-url', 'gs-social-tab'].forEach(id => {
+        ['gs-api-key', 'gs-opd-url', 'gs-opd-tab', 'gs-opdblr-url', 'gs-opdblr-tab', 'gs-ipd-url', 'gs-ipd-tab', 'gs-ads-url', 'gs-ads-tab', 'gs-social-url', 'gs-social-tab', 'gs-leads-url', 'gs-leads-tab', 'gs-calls-url', 'gs-calls-tab'].forEach(id => {
           const el = document.getElementById(id); if (el) el.value = '';
         });
         setGsStatus('Settings cleared.', 'muted');
@@ -2640,6 +2676,10 @@
         const adsTab = $('#gs-ads-tab').value.trim();
         const socialUrl = $('#gs-social-url').value.trim();
         const socialTab = $('#gs-social-tab').value.trim();
+        const leadsUrl = $('#gs-leads-url').value.trim();
+        const leadsTab = $('#gs-leads-tab').value.trim();
+        const callsUrl = $('#gs-calls-url').value.trim();
+        const callsTab = $('#gs-calls-tab').value.trim();
 
         if (!apiKey) { setGsStatus('⚠️ Please paste your API key first.', 'bad'); return; }
 
@@ -2648,13 +2688,17 @@
         const ipdId = extractSheetId(ipdUrl);
         const adsId = extractSheetId(adsUrl);
         const socialId = extractSheetId(socialUrl);
+        const leadsId = extractSheetId(leadsUrl);
+        const callsId = extractSheetId(callsUrl);
 
         if (opdUrl && !opdId) { setGsStatus('⚠️ OPD (Delhi) URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (opdBlrUrl && !opdBlrId) { setGsStatus('⚠️ OPD (Bengaluru) URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (ipdUrl && !ipdId) { setGsStatus('⚠️ IPD URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (adsUrl && !adsId) { setGsStatus('⚠️ Ads URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (socialUrl && !socialId) { setGsStatus('⚠️ Social Media URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
-        if (!opdId && !opdBlrId && !ipdId && !adsId && !socialId) { setGsStatus('⚠️ Please provide at least one sheet URL.', 'bad'); return; }
+        if (leadsUrl && !leadsId) { setGsStatus('⚠️ LeadSquared Leads URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
+        if (callsUrl && !callsId) { setGsStatus('⚠️ Knowlarity Calls URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
+        if (!opdId && !opdBlrId && !ipdId && !adsId && !socialId && !leadsId && !callsId) { setGsStatus('⚠️ Please provide at least one sheet URL.', 'bad'); return; }
 
         setGsStatus('⏳ Fetching live data from Google Sheets…', 'busy');
         const tasks = [];
@@ -2679,17 +2723,42 @@
           fetchSheetRows(socialId, socialTab, apiKey, 'A1:BZ50000').then(rows => { state.social = rows; return ['Social', rows.length]; })
             .catch(e => { throw new Error('Social: ' + e.message); })
         );
+        // LeadSquared leads from a shared sheet (same columns as the dump) → drives the whole dashboard.
+        let leadsLoaded = false;
+        if (leadsId && leadsTab) tasks.push(
+          fetchSheetRows(leadsId, leadsTab, apiKey, 'A1:BZ50000').then(rows => {
+            state.raw = rows;
+            leadsLoaded = true;
+            autoDetectRefMonth();
+            splitRawIntoMtdLmtd();
+            return ['Leads', rows.length];
+          }).catch(e => { throw new Error('Leads: ' + e.message); })
+        );
+        // Knowlarity call logs from a shared sheet (same columns as the call dump).
+        if (callsId && callsTab) tasks.push(
+          fetchSheetRows(callsId, callsTab, apiKey, 'A1:BZ50000').then(rows => { state.calls = rows; return ['Calls', rows.length]; })
+            .catch(e => { throw new Error('Calls: ' + e.message); })
+        );
         try {
           const results = await Promise.all(tasks);
           const summary = results.map(([k, n]) => `${k}: <b>${n}</b> rows`).join(' &nbsp;·&nbsp; ');
           setGsStatus(`✅ Refreshed at ${new Date().toLocaleTimeString()} — ${summary}`, 'good');
           updateStatus();
           renderSocial();
-          if (state.mtd) {
+          if (leadsLoaded) {
+            // Full refresh, same as processing an uploaded dump.
+            buildSpendTable();
+            seedDateFilters();
+          }
+          if (state.raw) {
             renderSourceWise();
+            renderDisposition();
+            renderZoneWise();
             renderD1();
             renderBdReports();
           }
+          renderCalls();
+          renderMappings();
           saveState();
         } catch (e) {
           setGsStatus('❌ ' + e.message + '<br><span style="font-size:11px">Common causes: API key not enabled for Sheets API, sheet not shared as "Anyone with link", tab name typo, or quota exceeded.</span>', 'bad');
@@ -4140,6 +4209,8 @@
         try { loadSheetsSettings(); } catch (e) { console.warn('loadSheetsSettings:', e && e.message); }
         try { renderSocial(); } catch (e) { console.warn('renderSocial:', e && e.message); }
         try { if (typeof startMidnightWatcher === 'function') startMidnightWatcher(); } catch (e) { console.warn('startMidnightWatcher:', e && e.message); }
+        // Auto-pull the latest shared data so anyone who opens the page sees today's reports.
+        try { refreshFromSheets(); } catch (e) { console.warn('auto refreshFromSheets:', e && e.message); }
         const restoreInput = document.getElementById('file-restore');
         if (restoreInput) restoreInput.addEventListener('change', e => {
           if (restoreInput.files && restoreInput.files[0]) restoreFromBackup(restoreInput.files[0]);
