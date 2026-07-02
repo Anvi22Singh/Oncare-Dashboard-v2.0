@@ -1878,11 +1878,10 @@
         for (const k in ZONE_MAP) if (k.toLowerCase() === lower) return ZONE_MAP[k];
         return null;  // unmapped zones not counted
       }
-      // All 4 distance reasons -> these go to the "Patient Lost" disposition column
-      // (legacy "out of delhi" bucket per Anvi's reason-mapping screenshot)
+      // Out-of-territory losses -> the "Patient Lost" disposition column (and NON-relevant).
+      // "Distance Concern - Delhi" is IN Delhi, so it is NOT here (goes to the other column + stays relevant).
       const DISP_DISTANCE_REASONS = new Set([
         "Distance Concern",
-        "Distance Concern - Delhi",
         "Distance Concern - Out Of Delhi",
         "Distance Concern - Out Of BLR"
       ]);
@@ -1894,6 +1893,18 @@
         "Distance Concern - Out Of Delhi",
         "Distance Concern - Out Of BLR"
       ]);
+
+      // Case/space-insensitive matching so reason strings match regardless of casing or spacing
+      // (e.g. "Distance Concern - Out of Delhi" vs "...Out Of Delhi").
+      function normReason(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+      const DISP_DISTANCE_REASONS_N = new Set([...DISP_DISTANCE_REASONS].map(normReason));
+      const NON_REL_DISTANCE_REASONS_N = new Set([...NON_REL_DISTANCE_REASONS].map(normReason));
+      // Read the Patient Lost Reason from a row even if the column header casing/spacing differs.
+      function getLostReason(row) {
+        if (!row) return '';
+        const k = findKey(row, 'Patient Lost Reason') || findKey(row, 'Lost Reason');
+        return k ? row[k] : (row['Patient Lost Reason'] || '');
+      }
 
       // Explicit list of stages that ARE relevant (per Anvi's allow-list screenshot).
       // "Patient Lost" is included here but has a conditional exception below.
@@ -1933,10 +1944,9 @@
         if (!stage) return null;
         const s = String(stage).trim();
         if (s === "Patient Lost") {
-          const r = (lostReason || "").trim();
-          // "Patient Lost" column = any Distance Concern variant
+          // "Patient Lost" column = any Distance Concern variant (out-of-territory)
           // "Patient Lost(=! out of delhi)" column = real patient-lost reasons (Active Treatment, Died, etc.)
-          return DISP_DISTANCE_REASONS.has(r) ? "Patient Lost" : "Patient Lost(=! out of delhi)";
+          return DISP_DISTANCE_REASONS_N.has(normReason(lostReason)) ? "Patient Lost" : "Patient Lost(=! out of delhi)";
         }
         return STAGE_DISP_MAP[s] || null;
       }
@@ -1956,8 +1966,7 @@
         const s = String(stage).trim();
         if (!RELEVANT_STAGES.has(s)) return false;
         if (s === "Patient Lost") {
-          const r = (lostReason || "").trim();
-          if (NON_REL_DISTANCE_REASONS.has(r)) return false;
+          if (NON_REL_DISTANCE_REASONS_N.has(normReason(lostReason))) return false;
         }
         return true;
       }
@@ -3204,11 +3213,12 @@
           }
           const obj = map.get(cs);
           obj.total++;
-          if (isRelevant(r['Patient Stage'], r['Patient Lost Reason'])) obj.relevant++;
+          const _lostReason = getLostReason(r);
+          if (isRelevant(r['Patient Stage'], _lostReason)) obj.relevant++;
           const cat = stageCategory(r['Patient Stage']);
           if (cat === 'OPD') obj.opd++;
           if (cat === 'IPD') obj.ipd++;
-          const dispKey = customDisp(r['Patient Stage'], r['Patient Lost Reason']);
+          const dispKey = customDisp(r['Patient Stage'], _lostReason);
           if (dispKey) obj.disp[dispKey] = (obj.disp[dispKey] || 0) + 1;
           const d = parseDate(r['Created On']);
           if (d) obj.dates.add(dateKey(d));
