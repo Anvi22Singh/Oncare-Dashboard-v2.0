@@ -671,7 +671,7 @@
     </div>
     <div class="titles">
       <h1><span class="brand">oncare</span> · Daily Lead &amp; Conversion Dashboard</h1>
-      <div class="sub">Auto-populated from LeadSquared MTD + Knowlarity call dumps</div>
+      <div class="sub">Auto-populated from LeadSquared MTD + Acefone call dumps</div>
       <div id="build-stamp" style="font-size:11px;opacity:0.7;margin-top:4px;font-family:monospace">build: 2026-06-13c —
         libraries inlined (no CDN)</div>
     </div>
@@ -681,7 +681,7 @@
     <button data-tab="upload" class="active">📤 Upload &amp; Settings</button>
     <button data-tab="marketing">📊 Marketing Reports</button>
     <button data-tab="bd">🏥 BD Reports</button>
-    <button data-tab="calls">📞 Knowlarity Calls</button>
+    <button data-tab="calls">📞 Acefone Calls</button>
     <button data-tab="mappings">⚙️ Mapping Tables</button>
   </nav>
 
@@ -692,7 +692,7 @@
       <div class="card">
         <h2>Live from Google Sheets</h2>
         <p class="small-muted" style="margin-top:-6px;margin-bottom:14px">
-          This dashboard runs on shared Google Sheets — Leads, Knowlarity Calls, OPD, IPD, Ads and Social are all
+          This dashboard runs on shared Google Sheets — Leads, Acefone Calls, OPD, IPD, Ads and Social are all
           pulled live. Update the sheets each morning and everyone sees the same reports all day.
           Use <b>🔄 Refresh from Google Sheets</b> below to pull the latest, or just reopen the page.
         </p>
@@ -861,13 +861,13 @@
               style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
           </div>
           <div>
-            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📞 Knowlarity Calls Sheet
+            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📞 Acefone Calls Sheet
               — URL <span class="small-muted">(same columns as the call dump)</span></label>
             <input type="text" id="gs-calls-url" placeholder="https://docs.google.com/spreadsheets/d/..."
               style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
           </div>
           <div>
-            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📞 Knowlarity Calls — Tab
+            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📞 Acefone Calls — Tab
               Name</label>
             <input type="text" id="gs-calls-tab" placeholder="Calls"
               style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
@@ -1129,8 +1129,8 @@
       </div>
 
       <div class="card">
-        <h2>📊 Daily Missed &amp; Abandoned Call Tracker</h2>
-        <p class="small-muted">All dates in the loaded Knowlarity dump, split by working vs non-working hours. Red
+        <h2>📊 Daily Answered &amp; Missed Call Tracker</h2>
+        <p class="small-muted">All dates in the loaded Acefone dump, split by working vs non-working hours. Red
           cells: Missed % above benchmark.</p>
         <div class="filter-row" style="background:#f8f4ff;padding:10px 14px;border-radius:6px;margin-bottom:14px">
           <strong style="color:var(--primary-dark)">📐 Benchmarks for Missed %:</strong>
@@ -1161,18 +1161,13 @@
 
       <div class="card">
         <h2>Call Lists (D-1) — Delhi NCR <span class="badge delhi">Delhi</span></h2>
-        <p class="small-muted">Grouped by customer phone number with no. of trials on that day.</p>
+        <p class="small-muted">Grouped by customer phone number with no. of attempts on that day.</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:18px">
           <div>
             <h3 style="background:#fde2e8;padding:6px 10px;border-radius:4px;margin-bottom:8px">📵 Total Missed Calls
             </h3>
-            <div class="small-muted" style="margin-bottom:6px">Abandoned + Customer Status = Connected</div>
+            <div class="small-muted" style="margin-bottom:6px">Call Status = Missed</div>
             <div id="calls-missed-delhi"></div>
-          </div>
-          <div>
-            <h3 style="background:#ffe9d6;padding:6px 10px;border-radius:4px;margin-bottom:8px">📴 Abandoned Calls</h3>
-            <div class="small-muted" style="margin-bottom:6px">Abandoned + Customer Status = Not Connected</div>
-            <div id="calls-abandoned-delhi"></div>
           </div>
           <div>
             <h3 style="background:#ffd6dc;padding:6px 10px;border-radius:4px;margin-bottom:8px">🌙 Missed in Non-Working
@@ -1189,11 +1184,8 @@
           <div>
             <h3 style="background:#fde2e8;padding:6px 10px;border-radius:4px;margin-bottom:8px">📵 Total Missed Calls
             </h3>
+            <div class="small-muted" style="margin-bottom:6px">Call Status = Missed</div>
             <div id="calls-missed-blr"></div>
-          </div>
-          <div>
-            <h3 style="background:#ffe9d6;padding:6px 10px;border-radius:4px;margin-bottom:8px">📴 Abandoned Calls</h3>
-            <div id="calls-abandoned-blr"></div>
           </div>
           <div>
             <h3 style="background:#ffd6dc;padding:6px 10px;border-radius:4px;margin-bottom:8px">🌙 Missed in Non-Working
@@ -1730,7 +1722,7 @@
         });
         // Wipe rendered report bodies
         ['source-delhi', 'source-blr', 'disp-delhi', 'disp-blr', 'zone-table', 'd1-delhi', 'd1-blr',
-          'calls-summary', 'calls-tracker', 'calls-missed', 'calls-abandoned', 'calls-nwh',
+          'calls-summary', 'calls-tracker', 'calls-missed', 'calls-nwh',
           'calls-agents-d1', 'calls-agents-mtd', 'bd-l2o-delhi', 'bd-l2o-blr',
           'owner-actuals-all', 'owner-actuals-paid', 'owner-pct-all', 'owner-pct-paid'].forEach(id => {
             const el = document.getElementById(id); if (el) el.innerHTML = '';
@@ -2124,7 +2116,7 @@
           if (state.mtd) parts.push(`✓ MTD: <b>${state.mtd.length}</b> leads`);
           if (state.lmtd) parts.push(`✓ LMTD (same days): <b>${state.lmtd.length}</b> leads`);
         }
-        if (state.calls) parts.push(`✓ Knowlarity calls: <b>${state.calls.length}</b> records`);
+        if (state.calls) parts.push(`✓ Acefone calls: <b>${state.calls.length}</b> records`);
         if (state.opd) parts.push(`✓ OPD (Delhi): <b>${state.opd.length}</b> rows`);
         if (state.opdBlr) parts.push(`✓ OPD (Bengaluru): <b>${state.opdBlr.length}</b> rows`);
         if (state.ipd) parts.push(`✓ IPD tracker: <b>${state.ipd.length}</b> rows`);
@@ -2684,7 +2676,7 @@
         if (adsUrl && !adsId) { setGsStatus('⚠️ Ads URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (socialUrl && !socialId) { setGsStatus('⚠️ Social Media URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (leadsUrl && !leadsId) { setGsStatus('⚠️ LeadSquared Leads URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
-        if (callsUrl && !callsId) { setGsStatus('⚠️ Knowlarity Calls URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
+        if (callsUrl && !callsId) { setGsStatus('⚠️ Acefone Calls URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (!opdId && !opdBlrId && !ipdId && !adsId && !socialId && !leadsId && !callsId) { setGsStatus('⚠️ Please provide at least one sheet URL.', 'bad'); return; }
 
         setGsStatus('⏳ Fetching live data from Google Sheets…', 'busy');
@@ -3813,7 +3805,7 @@
       /* ===========================================================
          KNOWLARITY CALLS
          =========================================================== */
-      // --- Knowlarity Calls report (per Anvi's spec) ---
+      // --- Acefone Calls report (per Anvi's spec) ---
       //
       // Working hours: 10:00 AM – 7:30 PM (10:00 ≤ time < 19:30 local)
       // Missed call    = Call Status = "Abandoned" AND Customer Status = "Connected"
@@ -3831,32 +3823,57 @@
 
       // Bengaluru SR (virtual) numbers — calls received on these are Bengaluru region.
       // All other Sr Numbers are treated as Delhi NCR.
-      const BLR_SR_NUMBERS = new Set([
-        '+918929723343',
-        '+919513260050',
-        '+917353029922'
+      // ==== Acefone call report ====
+      // Region: virtual number (DID = column H). These DIDs belong to the Bengaluru sales team; all others = Delhi.
+      const BLR_DIDS = new Set([
+        '918065341645', '918065341644', '918065341663', '918065341652', '918065341648'
       ]);
+      function digitsOnly(s) { return String(s || '').replace(/\D/g, ''); }
 
-      function cleanSrNumber(s) {
-        if (!s) return '';
-        // Knowlarity prefixes "+" numbers with an apostrophe e.g. "'+919513260050"
-        return String(s).replace(/^['"]+/, '').trim();
+      // Resolve Acefone column keys once (tolerant to header casing/spacing).
+      let CALL_COLS = null;
+      function resolveCallCols() {
+        const sample = (state.calls && state.calls[0]) || null;
+        if (!sample) { CALL_COLS = null; return; }
+        CALL_COLS = {
+          status: findKey(sample, 'Call Status') || 'Call Status',
+          time: findKey(sample, 'Time') || 'Time',
+          did: findKey(sample, 'DID') || 'DID',
+          talk: findKey(sample, 'Conversation Duration') || 'Conversation Duration',
+          cust: findKey(sample, 'Customer Number') || 'Customer Number',
+          cause: findKey(sample, 'Agent Hangup Cause') || 'Agent Hangup Cause'
+        };
       }
+      const callTime = r => CALL_COLS ? r[CALL_COLS.time] : (r && r['Time']);
+      const callStatus = r => String((CALL_COLS ? r[CALL_COLS.status] : (r && r['Call Status'])) || '').trim().toLowerCase();
+      const isMissedCall = r => callStatus(r) === 'missed';
+      const isAnsweredCall = r => callStatus(r) === 'answered';
 
       function isBlrCall(r) {
-        return BLR_SR_NUMBERS.has(cleanSrNumber(r && r['Sr Number']));
+        return BLR_DIDS.has(digitsOnly(CALL_COLS ? r[CALL_COLS.did] : (r && r['DID'])));
       }
 
       function cleanPhone(s) {
-        // Knowlarity prefixes phone numbers with "'+91" — strip the leading apostrophe
         if (!s) return '';
         return String(s).replace(/^'/, '').trim();
+      }
+
+      // Agent who answered — parsed from "Agent Hangup Cause" e.g. "Gopi Gupta:ANSWERED".
+      function answeredAgent(r) {
+        const cause = String((CALL_COLS ? r[CALL_COLS.cause] : (r && r['Agent Hangup Cause'])) || '');
+        for (const part of cause.split(',')) {
+          if (/answered/i.test(part)) {
+            const i = part.lastIndexOf(':');
+            if (i > 0) return part.slice(0, i).trim();
+          }
+        }
+        return null;
       }
 
       function groupByCustomer(rows) {
         const map = new Map();
         rows.forEach(r => {
-          const c = cleanPhone(r['Customer']);
+          const c = cleanPhone(CALL_COLS ? r[CALL_COLS.cust] : r['Customer Number']);
           if (!c) return;
           if (!map.has(c)) map.set(c, { customer: c, trials: 0 });
           map.get(c).trials++;
@@ -3876,13 +3893,13 @@
       }
 
       function avgTalkTimeBy(rows) {
-        // Spec: "if call status is marked as answered then calculate avg talk time of agents"
-        const ans = rows.filter(r => String(r['Call Status'] || '').toLowerCase() === 'answered');
+        // Avg talk time (Conversation Duration) of the answering agent, over Answered calls.
+        const ans = rows.filter(isAnsweredCall);
         const agg = new Map();
         ans.forEach(r => {
-          const a = (r['Agent Name'] || '').trim();
+          const a = answeredAgent(r);
           if (!a) return;
-          const t = parseHmsToSec(r['Talk Time (hh:mm:ss)']);
+          const t = parseHmsToSec(CALL_COLS ? r[CALL_COLS.talk] : r['Conversation Duration']);
           if (!agg.has(a)) agg.set(a, { sum: 0, n: 0 });
           const o = agg.get(a);
           o.sum += t; o.n++;
@@ -3912,53 +3929,46 @@
       function buildCallsTracker(callsSubset) {
         const subset = callsSubset || state.calls;
         if (!subset || !subset.length) return '<p class="small-muted">No call records for this region.</p>';
-        const dates = uniqueDates(subset, 'Date and Time').sort();
+        const dates = uniqueDates(subset, CALL_COLS ? CALL_COLS.time : 'Time').sort();
         if (!dates.length) return '<p class="small-muted">No dated rows.</p>';
 
-        // Per-date counts
+        // Per-date counts (Acefone: Call Status = Answered / Missed)
         function counts(rows) {
           const total = rows.length;
-          const missed = rows.filter(r =>
-            String(r['Call Status'] || '').toLowerCase() === 'abandoned' &&
-            String(r['Customer Status'] || '').toLowerCase() === 'connected').length;
-          const abandoned = rows.filter(r =>
-            String(r['Call Status'] || '').toLowerCase() === 'abandoned' &&
-            String(r['Customer Status'] || '').toLowerCase() === 'not connected').length;
-          return { total, missed, abandoned };
+          const answered = rows.filter(isAnsweredCall).length;
+          const missed = rows.filter(isMissedCall).length;
+          return { total, answered, missed };
         }
         function pct(n, d) { return d ? (n / d * 100) : 0; }
         function fmtPct(p) { return (p === 0 ? '0%' : p.toFixed(p < 10 ? 0 : (p === Math.round(p) ? 0 : 2)) + '%'); }
-        // pctCell with optional threshold:
-        //   threshold = number  → red if p > threshold, else green
-        //   threshold = null    → always green (no benchmark, e.g. Abandoned %)
+        // pctCell: red if % > threshold, else green.
         function pctCell(p, threshold) {
           let cls = 'good-pct';
           if (threshold !== null && threshold !== undefined && p > threshold) cls = 'bad-pct';
           const tip = threshold !== null && threshold !== undefined ? ` title="Benchmark: ${threshold}%"` : '';
           return `<td class="num ${cls}"${tip}>${fmtPct(p)}</td>`;
         }
-        // Read benchmarks from inputs (fallback to defaults)
         const bmWh = Number($('#bm-wh-miss').value) || 10;
         const bmNwh = Number($('#bm-nwh-miss').value) || 20;
         const bmOv = Number($('#bm-ov-miss').value) || 15;
 
         const rows = dates.map(date => {
           const dayRows = subset.filter(r => {
-            const d = parseDate(r['Date and Time']);
+            const d = parseDate(callTime(r));
             return d && dateKey(d) === date;
           });
-          const wh = dayRows.filter(r => isWorkingHours(parseDate(r['Date and Time'])));
-          const nwh = dayRows.filter(r => !isWorkingHours(parseDate(r['Date and Time'])));
+          const wh = dayRows.filter(r => isWorkingHours(parseDate(callTime(r))));
+          const nwh = dayRows.filter(r => !isWorkingHours(parseDate(callTime(r))));
           return { date, all: counts(dayRows), w: counts(wh), n: counts(nwh) };
         });
 
         // TOTAL row
-        const tot = { all: { total: 0, missed: 0, abandoned: 0 }, w: { total: 0, missed: 0, abandoned: 0 }, n: { total: 0, missed: 0, abandoned: 0 } };
+        const tot = { all: { total: 0, answered: 0, missed: 0 }, w: { total: 0, answered: 0, missed: 0 }, n: { total: 0, answered: 0, missed: 0 } };
         rows.forEach(r => {
           ['all', 'w', 'n'].forEach(k => {
             tot[k].total += r[k].total;
+            tot[k].answered += r[k].answered;
             tot[k].missed += r[k].missed;
-            tot[k].abandoned += r[k].abandoned;
           });
         });
 
@@ -3966,16 +3976,14 @@
     <thead>
       <tr>
         <th rowspan="2">Date</th>
-        <th colspan="5" class="group-wh">⏰ Working Hours (10:00 – 19:30)</th>
-        <th colspan="5" class="group-nwh">🌙 Non-Working Hours (19:31 – 09:59)</th>
-        <th colspan="2" class="group-overall">✅ Overall</th>
+        <th colspan="4" class="group-wh">⏰ Working Hours (10:00 – 19:30)</th>
+        <th colspan="4" class="group-nwh">🌙 Non-Working Hours (19:31 – 09:59)</th>
+        <th colspan="1" class="group-overall">✅ Overall</th>
       </tr>
       <tr>
-        <th class="sub-h num">Total</th><th class="sub-h num">Missed</th><th class="sub-h num">Missed %</th>
-        <th class="sub-h num">Abandoned</th><th class="sub-h num">Abandoned %</th>
-        <th class="sub-h num">Total</th><th class="sub-h num">Missed</th><th class="sub-h num">Missed %</th>
-        <th class="sub-h num">Abandoned</th><th class="sub-h num">Abandoned %</th>
-        <th class="sub-h num">Missed %</th><th class="sub-h num">Abandoned %</th>
+        <th class="sub-h num">Total</th><th class="sub-h num">Answered</th><th class="sub-h num">Missed</th><th class="sub-h num">Missed %</th>
+        <th class="sub-h num">Total</th><th class="sub-h num">Answered</th><th class="sub-h num">Missed</th><th class="sub-h num">Missed %</th>
+        <th class="sub-h num">Missed %</th>
       </tr>
     </thead><tbody>`;
 
@@ -3983,17 +3991,14 @@
           html += `<tr>
       <td><b>${formatTrackerDate(r.date)}</b></td>
       <td class="num">${r.w.total}</td>
+      <td class="num">${r.w.answered}</td>
       <td class="num">${r.w.missed}</td>
       ${pctCell(pct(r.w.missed, r.w.total), bmWh)}
-      <td class="num">${r.w.abandoned}</td>
-      ${pctCell(pct(r.w.abandoned, r.w.total), null)}
       <td class="num">${r.n.total}</td>
+      <td class="num">${r.n.answered}</td>
       <td class="num">${r.n.missed}</td>
       ${pctCell(pct(r.n.missed, r.n.total), bmNwh)}
-      <td class="num">${r.n.abandoned}</td>
-      ${pctCell(pct(r.n.abandoned, r.n.total), null)}
       ${pctCell(pct(r.all.missed, r.all.total), bmOv)}
-      ${pctCell(pct(r.all.abandoned, r.all.total), null)}
     </tr>`;
         });
 
@@ -4001,17 +4006,14 @@
         html += `<tr class="total">
     <td>TOTAL</td>
     <td class="num">${tot.w.total}</td>
+    <td class="num">${tot.w.answered}</td>
     <td class="num">${tot.w.missed}</td>
     ${pctCell(pct(tot.w.missed, tot.w.total), bmWh)}
-    <td class="num">${tot.w.abandoned}</td>
-    ${pctCell(pct(tot.w.abandoned, tot.w.total), null)}
     <td class="num">${tot.n.total}</td>
+    <td class="num">${tot.n.answered}</td>
     <td class="num">${tot.n.missed}</td>
     ${pctCell(pct(tot.n.missed, tot.n.total), bmNwh)}
-    <td class="num">${tot.n.abandoned}</td>
-    ${pctCell(pct(tot.n.abandoned, tot.n.total), null)}
     ${pctCell(pct(tot.all.missed, tot.all.total), bmOv)}
-    ${pctCell(pct(tot.all.abandoned, tot.all.total), null)}
   </tr></tbody></table>`;
         return html;
       }
@@ -4019,19 +4021,20 @@
       function renderCalls() {
         if (!state.calls) {
           ['#calls-summary-delhi', '#calls-summary-blr'].forEach(sel => {
-            const el = $(sel); if (el) el.innerHTML = '<div class="empty-state"><div class="big">📞</div>Upload Knowlarity call logs to see this report.</div>';
+            const el = $(sel); if (el) el.innerHTML = '<div class="empty-state"><div class="big">📞</div>Connect the Acefone Calls sheet to see this report.</div>';
           });
           ['#calls-tracker-delhi', '#calls-tracker-blr',
-            '#calls-missed-delhi', '#calls-abandoned-delhi', '#calls-nwh-delhi',
-            '#calls-missed-blr', '#calls-abandoned-blr', '#calls-nwh-blr',
+            '#calls-missed-delhi', '#calls-nwh-delhi',
+            '#calls-missed-blr', '#calls-nwh-blr',
             '#calls-agents-d1-delhi', '#calls-agents-mtd-delhi',
             '#calls-agents-d1-blr', '#calls-agents-mtd-blr'].forEach(sel => {
               const el = $(sel); if (el) el.innerHTML = '';
             });
           return;
         }
+        resolveCallCols();
 
-        // Split state.calls by Sr Number
+        // Split state.calls by region (DID / virtual number)
         const blrCalls = state.calls.filter(isBlrCall);
         const delhiCalls = state.calls.filter(r => !isBlrCall(r));
 
@@ -4042,40 +4045,33 @@
         // D-1 date filter
         let target = $('#calls-date').value;
         if (!target) {
-          const dates = uniqueDates(state.calls, 'Date and Time').sort();
+          const dates = uniqueDates(state.calls, CALL_COLS ? CALL_COLS.time : 'Time').sort();
           target = dates[dates.length - 1] || null;
           if (target) $('#calls-date').value = target;
         }
 
-        const isMissed = r => String(r['Call Status'] || '').toLowerCase() === 'abandoned'
-          && String(r['Customer Status'] || '').toLowerCase() === 'connected';
-        const isAbandnd = r => String(r['Call Status'] || '').toLowerCase() === 'abandoned'
-          && String(r['Customer Status'] || '').toLowerCase() === 'not connected';
-
         // Helper to render one region's summary + call lists for the filter date
         function renderRegion(suffix, regionCalls) {
           const day = regionCalls.filter(r => {
-            const d = parseDate(r['Date and Time']);
+            const d = parseDate(callTime(r));
             return d && dateKey(d) === target;
           });
-          const missedRows = day.filter(isMissed);
-          const abandnRows = day.filter(isAbandnd);
+          const missedRows = day.filter(isMissedCall);
+          const answeredCnt = day.filter(isAnsweredCall).length;
           const nwhRows = missedRows.filter(r => {
-            const d = parseDate(r['Date and Time']);
+            const d = parseDate(callTime(r));
             return d && !isWorkingHours(d);
           });
           const totalCalls = day.length;
           const missedCnt = missedRows.length;
-          const abandnCnt = abandnRows.length;
           const missedPct = totalCalls ? (missedCnt / totalCalls * 100) : 0;
           $('#calls-summary-' + suffix).innerHTML = `
       <div class="stat-tile"><div class="lbl">Total Calls</div><div class="val">${totalCalls}</div></div>
+      <div class="stat-tile good"><div class="lbl">Answered</div><div class="val">${answeredCnt}</div></div>
       <div class="stat-tile bad"><div class="lbl">Missed Calls</div><div class="val">${missedCnt}</div></div>
-      <div class="stat-tile warn"><div class="lbl">Abandoned Calls</div><div class="val">${abandnCnt}</div></div>
       <div class="stat-tile warn"><div class="lbl">Missed %</div><div class="val">${missedPct.toFixed(2)}%</div></div>
     `;
           $('#calls-missed-' + suffix).innerHTML = trialTable(groupByCustomer(missedRows), 'No missed calls 🎉');
-          $('#calls-abandoned-' + suffix).innerHTML = trialTable(groupByCustomer(abandnRows), 'No abandoned calls 🎉');
           $('#calls-nwh-' + suffix).innerHTML = trialTable(groupByCustomer(nwhRows), 'No missed calls in non-working hours');
         }
 
@@ -4084,11 +4080,11 @@
 
         // Agent avg talk time — split by region (D-1 + MTD for each)
         const dayDelhi = delhiCalls.filter(r => {
-          const d = parseDate(r['Date and Time']);
+          const d = parseDate(callTime(r));
           return d && dateKey(d) === target;
         });
         const dayBlr = blrCalls.filter(r => {
-          const d = parseDate(r['Date and Time']);
+          const d = parseDate(callTime(r));
           return d && dateKey(d) === target;
         });
         $('#calls-agents-d1-delhi').innerHTML = agentTable(avgTalkTimeBy(dayDelhi));
