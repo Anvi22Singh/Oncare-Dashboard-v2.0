@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-07-06 v5 — calls: missed vs abandoned (≤10s)';</script>
+  <script>window.__BUILD__ = '2026-07-06 v7 — abandoned cutoff ≤10s till 25 Jul, ≤6s after';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -1131,8 +1131,8 @@
       <div class="card">
         <h2>📊 Daily Missed &amp; Abandoned Call Tracker</h2>
         <p class="small-muted">All dates in the loaded Acefone dump, split by working vs non-working hours. Red
-          cells: Missed % above benchmark. <b>Abandoned</b> = a Missed call that lasted ≤ 10 seconds; longer Missed
-          calls count as <b>Missed</b>.</p>
+          cells: Missed % above benchmark. <b>Abandoned</b> = a short Missed call (≤ 10 sec on/before 25 Jul 2026,
+          ≤ 6 sec after); longer Missed calls count as <b>Missed</b>.</p>
         <div class="filter-row" style="background:#f8f4ff;padding:10px 14px;border-radius:6px;margin-bottom:14px">
           <strong style="color:var(--primary-dark)">📐 Benchmarks for Missed %:</strong>
           <label>Working hrs:</label>
@@ -1167,12 +1167,12 @@
           <div>
             <h3 style="background:#fde2e8;padding:6px 10px;border-radius:4px;margin-bottom:8px">📵 Total Missed Calls
             </h3>
-            <div class="small-muted" style="margin-bottom:6px">Missed &amp; lasted &gt; 10 sec</div>
+            <div class="small-muted" style="margin-bottom:6px">Missed &amp; longer than the abandoned cutoff</div>
             <div id="calls-missed-delhi"></div>
           </div>
           <div>
             <h3 style="background:#ffe9d6;padding:6px 10px;border-radius:4px;margin-bottom:8px">📴 Abandoned Calls</h3>
-            <div class="small-muted" style="margin-bottom:6px">Missed &amp; lasted ≤ 10 sec</div>
+            <div class="small-muted" style="margin-bottom:6px">Missed &amp; short (≤10s till 25 Jul, ≤6s after)</div>
             <div id="calls-abandoned-delhi"></div>
           </div>
           <div>
@@ -1190,12 +1190,12 @@
           <div>
             <h3 style="background:#fde2e8;padding:6px 10px;border-radius:4px;margin-bottom:8px">📵 Total Missed Calls
             </h3>
-            <div class="small-muted" style="margin-bottom:6px">Missed &amp; lasted &gt; 10 sec</div>
+            <div class="small-muted" style="margin-bottom:6px">Missed &amp; longer than the abandoned cutoff</div>
             <div id="calls-missed-blr"></div>
           </div>
           <div>
             <h3 style="background:#ffe9d6;padding:6px 10px;border-radius:4px;margin-bottom:8px">📴 Abandoned Calls</h3>
-            <div class="small-muted" style="margin-bottom:6px">Missed &amp; lasted ≤ 10 sec</div>
+            <div class="small-muted" style="margin-bottom:6px">Missed &amp; short (≤10s till 25 Jul, ≤6s after)</div>
             <div id="calls-abandoned-blr"></div>
           </div>
           <div>
@@ -3840,8 +3840,14 @@
         '918065341645', '918065341644', '918065341663', '918065341652', '918065341648'
       ]);
       function digitsOnly(s) { return String(s || '').replace(/\D/g, ''); }
-      // A Missed call with total Call Duration <= this many seconds is counted as "Abandoned".
-      const ABANDON_MAX_SEC = 10;
+      // A Missed call with total Call Duration <= the cutoff is counted as "Abandoned".
+      // The cutoff changed over time: calls ON/BEFORE 25 Jul 2026 use 10s; calls AFTER use 6s.
+      const ABANDON_CUTOVER = '2026-07-25';
+      function abandonMaxSec(r) {
+        const d = parseDate(callTime(r));
+        const k = d ? dateKey(d) : null;
+        return (k && k > ABANDON_CUTOVER) ? 6 : 10;
+      }
 
       // Resolve Acefone column keys once (tolerant to header casing/spacing).
       let CALL_COLS = null;
@@ -3862,9 +3868,9 @@
       const callStatus = r => String((CALL_COLS ? r[CALL_COLS.status] : (r && r['Call Status'])) || '').trim().toLowerCase();
       const callDurationSec = r => parseHmsToSec(CALL_COLS ? r[CALL_COLS.dur] : (r && r['Call Duration']));
       const isAnsweredCall = r => callStatus(r) === 'answered';
-      // Split "Missed" into Abandoned (<=10s total duration) vs Missed (>10s).
-      const isAbandonedCall = r => callStatus(r) === 'missed' && callDurationSec(r) <= ABANDON_MAX_SEC;
-      const isMissedCall = r => callStatus(r) === 'missed' && callDurationSec(r) > ABANDON_MAX_SEC;
+      // Split "Missed" into Abandoned (<= per-call cutoff) vs Missed (> cutoff). Cutoff is date-based.
+      const isAbandonedCall = r => callStatus(r) === 'missed' && callDurationSec(r) <= abandonMaxSec(r);
+      const isMissedCall = r => callStatus(r) === 'missed' && callDurationSec(r) > abandonMaxSec(r);
 
       function isBlrCall(r) {
         return BLR_DIDS.has(digitsOnly(CALL_COLS ? r[CALL_COLS.did] : (r && r['DID'])));
