@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-07-06 v7 — abandoned cutoff ≤10s till 25 Jul, ≤6s after';</script>
+  <script>window.__BUILD__ = '2026-07-06 v8 — added Whatsapp Paid - BLR source';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -1283,6 +1283,8 @@
         "WhatsApp": "Whatsapp - Paid",
         "Facebook": "Whatsapp - Paid",
         "FB Lead Ads": "Whatsapp - Paid",
+        "Whatsapp Paid - BLR": "Whatsapp Paid - BLR",
+        "Whatsapp - Paid - BLR": "Whatsapp Paid - BLR",
         "Whatsapp - Paid": "Whatsapp - Paid",
         "Whatsapp-FB/Whatsapp & Insta": "Whatsapp - Paid",
         "WhatsApp FB ": "Whatsapp - Paid",
@@ -1432,7 +1434,7 @@
       // Bangalore (Blr) sources - all others are Delhi
       const BLR_SOURCES = new Set([
         "Website Blr", "Google Inbound - Blr", "Inbound SEO Blr",
-        "SEO Blr", "Offline Flex/Hoardings - Blr", "Social Media - BLR", "Brand Video Blr"
+        "SEO Blr", "Offline Flex/Hoardings - Blr", "Social Media - BLR", "Brand Video Blr", "Whatsapp Paid - BLR"
       ]);
 
       // Source row order + Paid/Free classification per your screenshots
@@ -1473,6 +1475,7 @@
         { name: "Website Blr", type: "Paid" },
         { name: "Google Inbound - Blr", type: "Paid" },
         { name: "Social Media - BLR", type: "Paid" },
+        { name: "Whatsapp Paid - BLR", type: "Paid" },
         { name: "Brand Video Blr", type: "Paid" },
         { name: "Inbound SEO Blr", type: "Free" },
         { name: "SEO Blr", type: "Free" },
@@ -1499,6 +1502,7 @@
         'Social Media - DEL Leadform',
         'Social Media - BLR',
         'Whatsapp - Paid',
+        'Whatsapp Paid - BLR',
         'Brand Video Delhi',
         'Brand Video Blr'
       ]);
@@ -2886,6 +2890,7 @@
         'Social Media Inbound',
         'Social Media - DEL Leadform',
         'Whatsapp - Paid',
+        'Whatsapp Paid - BLR',
         'Awareness Meta',
         'Social Media - BLR',
         'Brand Video Delhi',
@@ -2903,6 +2908,8 @@
           if (v.includes('blr') || v.includes('bangalore') || v.includes('blore') || v.includes('bengaluru')) return 'Brand Video Blr';
           return 'Brand Video Delhi';
         }
+        // WhatsApp-BLR must be checked BEFORE the generic 'blr' and 'whatsapp' rules.
+        if ((v.includes('whatsapp') || v.includes('insta')) && (v.includes('blr') || v.includes('bangalore') || v.includes('blore') || v.includes('bengaluru'))) return 'Whatsapp Paid - BLR';
         if (v.includes('awareness')) return 'Awareness Meta';
         if (v.includes('blr')) return 'Social Media - BLR';
         if (v.includes('leadgen') || v.includes('lead gen') || v.includes('leadform') || v.includes('lead form')) return 'Social Media - DEL Leadform';
