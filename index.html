@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-07-06 v8 — added Whatsapp Paid - BLR source';</script>
+  <script>window.__BUILD__ = '2026-07-06 v10 — added Mammogram Delhi source';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -1284,6 +1284,7 @@
         "Facebook": "Whatsapp - Paid",
         "FB Lead Ads": "Whatsapp - Paid",
         "Whatsapp Paid - BLR": "Whatsapp Paid - BLR",
+        "Mammogram Delhi": "Mammogram Delhi",
         "Whatsapp - Paid - BLR": "Whatsapp Paid - BLR",
         "Whatsapp - Paid": "Whatsapp - Paid",
         "Whatsapp-FB/Whatsapp & Insta": "Whatsapp - Paid",
@@ -1454,6 +1455,7 @@
         { name: "Awareness GDN", type: "Paid" },
         { name: "Awareness Meta", type: "Paid" },
         { name: "Brand Video Delhi", type: "Paid" },
+        { name: "Mammogram Delhi", type: "Paid" },
         { name: "GZB Branding", type: "Paid" },
         { name: "Offline flex/Hoardings", type: "Paid" },
         // Free
@@ -1504,7 +1506,8 @@
         'Whatsapp - Paid',
         'Whatsapp Paid - BLR',
         'Brand Video Delhi',
-        'Brand Video Blr'
+        'Brand Video Blr',
+        'Mammogram Delhi'
       ]);
 
       // Google Ads cluster — split by region. CAC is cumulative WITHIN each region.
@@ -2373,12 +2376,20 @@
         };
       }
 
+      // BD staff roster tweaks:
+      //   EXCLUDED_STAFF  = departed people — hidden from all reports.
+      //   ROSTER_DELHI / ROSTER_BLR = new joiners — always shown (even with 0 data).
+      const EXCLUDED_STAFF = new Set(['Abhishek Kumar']);
+      const ROSTER_DELHI = ['Deepak Meena'];
+      const ROSTER_BLR = ['Mamatha MS'];
+
       function buildOwnerStageGrid(leadRows, opdRows, ipdRows) {
         // Returns Map<owner, {col->count}>
         const grid = new Map();
         const ensure = name => {
           const k = (name || '').trim();
           if (!k) return null;
+          if (EXCLUDED_STAFF.has(k)) return null;   // departed staff — omit from report
           if (!grid.has(k)) {
             const m = {};
             OWNER_DISP_COLS.forEach(c => m[c] = 0);
@@ -2386,6 +2397,8 @@
           }
           return grid.get(k);
         };
+        // Seed new joiners so they always appear (this report isn't city-split → include both).
+        [...ROSTER_DELHI, ...ROSTER_BLR].forEach(n => ensure(n));
         // Lead-stage columns (from LeadSquared dump, by Owner)
         leadRows.forEach(r => {
           const owner = ensure(r['Owner']);
@@ -2894,7 +2907,8 @@
         'Awareness Meta',
         'Social Media - BLR',
         'Brand Video Delhi',
-        'Brand Video Blr'
+        'Brand Video Blr',
+        'Mammogram Delhi'
       ];
       // Quick lookup: is this report source fed by the Social Media sheet?
       const SOCIAL_SHEET_SOURCES = new Set(SOCIAL_BUCKETS);
@@ -2912,6 +2926,7 @@
         if ((v.includes('whatsapp') || v.includes('insta')) && (v.includes('blr') || v.includes('bangalore') || v.includes('blore') || v.includes('bengaluru'))) return 'Whatsapp Paid - BLR';
         if (v.includes('awareness')) return 'Awareness Meta';
         if (v.includes('blr')) return 'Social Media - BLR';
+        if (v.includes('mammogram') || v.includes('mammo')) return 'Mammogram Delhi';
         if (v.includes('leadgen') || v.includes('lead gen') || v.includes('leadform') || v.includes('lead form')) return 'Social Media - DEL Leadform';
         if (v.includes('inbound')) return 'Social Media Inbound';
         if (v.includes('whatsapp') || v.includes('insta')) return 'Whatsapp - Paid';
@@ -3922,13 +3937,15 @@
         return h;
       }
 
-      function avgTalkTimeBy(rows) {
+      function avgTalkTimeBy(rows, roster) {
         // Avg talk time (Conversation Duration) of the answering agent, over Answered calls.
         const ans = rows.filter(isAnsweredCall);
         const agg = new Map();
+        // Seed roster agents (city's new joiners) so they always appear, even with 0 calls.
+        (roster || []).forEach(a => { if (a && !EXCLUDED_STAFF.has(a)) agg.set(a, { sum: 0, n: 0 }); });
         ans.forEach(r => {
           const a = answeredAgent(r);
-          if (!a) return;
+          if (!a || EXCLUDED_STAFF.has(a)) return;   // skip departed staff
           const t = parseHmsToSec(CALL_COLS ? r[CALL_COLS.talk] : r['Conversation Duration']);
           if (!agg.has(a)) agg.set(a, { sum: 0, n: 0 });
           const o = agg.get(a);
@@ -4129,10 +4146,10 @@
           const d = parseDate(callTime(r));
           return d && dateKey(d) === target;
         });
-        $('#calls-agents-d1-delhi').innerHTML = agentTable(avgTalkTimeBy(dayDelhi));
-        $('#calls-agents-mtd-delhi').innerHTML = agentTable(avgTalkTimeBy(delhiCalls));
-        $('#calls-agents-d1-blr').innerHTML = agentTable(avgTalkTimeBy(dayBlr));
-        $('#calls-agents-mtd-blr').innerHTML = agentTable(avgTalkTimeBy(blrCalls));
+        $('#calls-agents-d1-delhi').innerHTML = agentTable(avgTalkTimeBy(dayDelhi, ROSTER_DELHI));
+        $('#calls-agents-mtd-delhi').innerHTML = agentTable(avgTalkTimeBy(delhiCalls, ROSTER_DELHI));
+        $('#calls-agents-d1-blr').innerHTML = agentTable(avgTalkTimeBy(dayBlr, ROSTER_BLR));
+        $('#calls-agents-mtd-blr').innerHTML = agentTable(avgTalkTimeBy(blrCalls, ROSTER_BLR));
       }
 
       /* ===========================================================
