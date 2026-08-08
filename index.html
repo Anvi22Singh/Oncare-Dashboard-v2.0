@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-07-06 v10 — added Mammogram Delhi source';</script>
+  <script>window.__BUILD__ = '2026-08-08 v11 — new Acefone call format (Status/Date/My Number/Department)';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -3857,16 +3857,37 @@
       }
 
       // ==== Acefone call report ====
-      // Region: virtual number (DID = column H). These DIDs belong to the Bengaluru sales team; all others = Delhi.
-      const BLR_DIDS = new Set([
-        '918065341645', '918065341644', '918065341663', '918065341652', '918065341648'
-      ]);
       function digitsOnly(s) { return String(s || '').replace(/\D/g, ''); }
+      // Duration parser — the Acefone export gives durations as plain seconds ("60"),
+      // but older formats used hh:mm:ss; handle both.
+      function durToSec(s) {
+        s = String(s == null ? '' : s).trim();
+        if (!s) return 0;
+        if (/^\d+$/.test(s)) return parseInt(s, 10);      // plain seconds
+        return parseHmsToSec(s);                           // hh:mm:ss fallback
+      }
+      // Parse the Acefone "Date" like "07-Aug 20:55:59" (no year) → Date (assumes current year).
+      const _MON = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+      function parseCallDateTime(s) {
+        if (!s) return null;
+        const m = String(s).trim().match(/^(\d{1,2})[-\s]([A-Za-z]{3,})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+        if (m) {
+          const mon = _MON[m[2].slice(0, 3).toLowerCase()];
+          if (mon !== undefined) {
+            const now = new Date();
+            const d = new Date(now.getFullYear(), mon, +m[1], +m[3], +m[4], m[5] ? +m[5] : 0);
+            if (d - now > 86400000) d.setFullYear(now.getFullYear() - 1); // roll back across year-end
+            return isNaN(d) ? null : d;
+          }
+        }
+        return parseDate(s); // fallback for ISO / other formats
+      }
+
       // A Missed call with total Call Duration <= the cutoff is counted as "Abandoned".
       // The cutoff changed over time: calls ON/BEFORE 25 Jul 2026 use 10s; calls AFTER use 6s.
       const ABANDON_CUTOVER = '2026-07-25';
       function abandonMaxSec(r) {
-        const d = parseDate(callTime(r));
+        const d = callDate(r);
         const k = d ? dateKey(d) : null;
         return (k && k > ABANDON_CUTOVER) ? 6 : 10;
       }
@@ -3877,25 +3898,27 @@
         const sample = (state.calls && state.calls[0]) || null;
         if (!sample) { CALL_COLS = null; return; }
         CALL_COLS = {
-          status: findKey(sample, 'Call Status') || 'Call Status',
-          time: findKey(sample, 'Time') || 'Time',
-          did: findKey(sample, 'DID') || 'DID',
-          talk: findKey(sample, 'Conversation Duration') || 'Conversation Duration',
+          status: findKey(sample, 'Status') || findKey(sample, 'Call Status') || 'Status',
+          time: findKey(sample, 'Date') || findKey(sample, 'Time') || 'Date',
+          dept: findKey(sample, 'Department') || 'Department',
+          talk: findKey(sample, 'Inbound Duration') || findKey(sample, 'Conversation Duration') || 'Inbound Duration',
           dur: findKey(sample, 'Call Duration') || 'Call Duration',
-          cust: findKey(sample, 'Customer Number') || 'Customer Number',
-          cause: findKey(sample, 'Agent Hangup Cause') || 'Agent Hangup Cause'
+          cust: findKey(sample, 'Client Number') || findKey(sample, 'Customer Number') || 'Client Number',
+          agent: findKey(sample, 'Answered By Agent') || 'Answered By Agent'
         };
       }
-      const callTime = r => CALL_COLS ? r[CALL_COLS.time] : (r && r['Time']);
-      const callStatus = r => String((CALL_COLS ? r[CALL_COLS.status] : (r && r['Call Status'])) || '').trim().toLowerCase();
-      const callDurationSec = r => parseHmsToSec(CALL_COLS ? r[CALL_COLS.dur] : (r && r['Call Duration']));
+      const callTime = r => CALL_COLS ? r[CALL_COLS.time] : (r && r['Date']);
+      const callDate = r => parseCallDateTime(callTime(r));
+      const callStatus = r => String((CALL_COLS ? r[CALL_COLS.status] : (r && r['Status'])) || '').trim().toLowerCase();
+      const callDurationSec = r => durToSec(CALL_COLS ? r[CALL_COLS.dur] : (r && r['Call Duration']));
       const isAnsweredCall = r => callStatus(r) === 'answered';
       // Split "Missed" into Abandoned (<= per-call cutoff) vs Missed (> cutoff). Cutoff is date-based.
       const isAbandonedCall = r => callStatus(r) === 'missed' && callDurationSec(r) <= abandonMaxSec(r);
       const isMissedCall = r => callStatus(r) === 'missed' && callDurationSec(r) > abandonMaxSec(r);
 
+      // Region from the Department column ("Oncare BLR Team" → Bengaluru, else Delhi).
       function isBlrCall(r) {
-        return BLR_DIDS.has(digitsOnly(CALL_COLS ? r[CALL_COLS.did] : (r && r['DID'])));
+        return /blr|bengal|bangal/i.test(String((CALL_COLS ? r[CALL_COLS.dept] : (r && r['Department'])) || ''));
       }
 
       function cleanPhone(s) {
@@ -3903,16 +3926,18 @@
         return String(s).replace(/^'/, '').trim();
       }
 
-      // Agent who answered — parsed from "Agent Hangup Cause" e.g. "Gopi Gupta:ANSWERED".
+      // Agent who answered — the "Answered By Agent" column, e.g. "Gopi Gupta (+918318477175)".
       function answeredAgent(r) {
-        const cause = String((CALL_COLS ? r[CALL_COLS.cause] : (r && r['Agent Hangup Cause'])) || '');
-        for (const part of cause.split(',')) {
-          if (/answered/i.test(part)) {
-            const i = part.lastIndexOf(':');
-            if (i > 0) return part.slice(0, i).trim();
-          }
-        }
-        return null;
+        const v = String((CALL_COLS ? r[CALL_COLS.agent] : (r && r['Answered By Agent'])) || '').trim();
+        if (!v || v === '---') return null;
+        return v.replace(/\s*\(.*\)\s*$/, '').trim() || null;
+      }
+
+      // Unique call dates (uses the Acefone date parser, not the generic one).
+      function callUniqueDates(rows) {
+        const set = new Set();
+        (rows || []).forEach(r => { const d = callDate(r); if (d) set.add(dateKey(d)); });
+        return [...set];
       }
 
       function groupByCustomer(rows) {
@@ -3946,7 +3971,7 @@
         ans.forEach(r => {
           const a = answeredAgent(r);
           if (!a || EXCLUDED_STAFF.has(a)) return;   // skip departed staff
-          const t = parseHmsToSec(CALL_COLS ? r[CALL_COLS.talk] : r['Conversation Duration']);
+          const t = durToSec(CALL_COLS ? r[CALL_COLS.talk] : r['Inbound Duration']);
           if (!agg.has(a)) agg.set(a, { sum: 0, n: 0 });
           const o = agg.get(a);
           o.sum += t; o.n++;
@@ -3976,7 +4001,7 @@
       function buildCallsTracker(callsSubset) {
         const subset = callsSubset || state.calls;
         if (!subset || !subset.length) return '<p class="small-muted">No call records for this region.</p>';
-        const dates = uniqueDates(subset, CALL_COLS ? CALL_COLS.time : 'Time').sort();
+        const dates = callUniqueDates(subset).sort();
         if (!dates.length) return '<p class="small-muted">No dated rows.</p>';
 
         // Per-date counts. Acefone: Missed calls split into Abandoned (<=10s) vs Missed (>10s).
@@ -4001,11 +4026,11 @@
 
         const rows = dates.map(date => {
           const dayRows = subset.filter(r => {
-            const d = parseDate(callTime(r));
+            const d = callDate(r);
             return d && dateKey(d) === date;
           });
-          const wh = dayRows.filter(r => isWorkingHours(parseDate(callTime(r))));
-          const nwh = dayRows.filter(r => !isWorkingHours(parseDate(callTime(r))));
+          const wh = dayRows.filter(r => isWorkingHours(callDate(r)));
+          const nwh = dayRows.filter(r => !isWorkingHours(callDate(r)));
           return { date, all: counts(dayRows), w: counts(wh), n: counts(nwh) };
         });
 
@@ -4100,7 +4125,7 @@
         // D-1 date filter
         let target = $('#calls-date').value;
         if (!target) {
-          const dates = uniqueDates(state.calls, CALL_COLS ? CALL_COLS.time : 'Time').sort();
+          const dates = callUniqueDates(state.calls).sort();
           target = dates[dates.length - 1] || null;
           if (target) $('#calls-date').value = target;
         }
@@ -4108,14 +4133,14 @@
         // Helper to render one region's summary + call lists for the filter date
         function renderRegion(suffix, regionCalls) {
           const day = regionCalls.filter(r => {
-            const d = parseDate(callTime(r));
+            const d = callDate(r);
             return d && dateKey(d) === target;
           });
           const missedRows = day.filter(isMissedCall);
           const abandonedRows = day.filter(isAbandonedCall);
           const answeredCnt = day.filter(isAnsweredCall).length;
           const nwhRows = missedRows.filter(r => {
-            const d = parseDate(callTime(r));
+            const d = callDate(r);
             return d && !isWorkingHours(d);
           });
           const totalCalls = day.length;
@@ -4139,11 +4164,11 @@
 
         // Agent avg talk time — split by region (D-1 + MTD for each)
         const dayDelhi = delhiCalls.filter(r => {
-          const d = parseDate(callTime(r));
+          const d = callDate(r);
           return d && dateKey(d) === target;
         });
         const dayBlr = blrCalls.filter(r => {
-          const d = parseDate(callTime(r));
+          const d = callDate(r);
           return d && dateKey(d) === target;
         });
         $('#calls-agents-d1-delhi').innerHTML = agentTable(avgTalkTimeBy(dayDelhi, ROSTER_DELHI));
