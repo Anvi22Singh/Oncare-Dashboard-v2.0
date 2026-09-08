@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-08-08 v11 — new Acefone call format (Status/Date/My Number/Department)';</script>
+  <script>window.__BUILD__ = '2026-08-21 v12 — added source: Whatsapp Paid - Remarketing (Delhi, social-sheet spend)';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -1285,8 +1285,12 @@
         "FB Lead Ads": "Whatsapp - Paid",
         "Whatsapp Paid - BLR": "Whatsapp Paid - BLR",
         "Mammogram Delhi": "Mammogram Delhi",
+        "Mouth Screening Delhi": "Mouth Screening Delhi",
         "Whatsapp - Paid - BLR": "Whatsapp Paid - BLR",
         "Whatsapp - Paid": "Whatsapp - Paid",
+        "Whatsapp Paid - Remarketing": "Whatsapp Paid - Remarketing",
+        "Whatsapp - Paid - Remarketing": "Whatsapp Paid - Remarketing",
+        "Whatsapp Remarketing": "Whatsapp Paid - Remarketing",
         "Whatsapp-FB/Whatsapp & Insta": "Whatsapp - Paid",
         "WhatsApp FB ": "Whatsapp - Paid",
         "Whatsapp FB": "Whatsapp - Paid",
@@ -1448,6 +1452,7 @@
         { name: "Social Media Inbound", type: "Paid" },
         { name: "Social Media - DEL Leadform", type: "Paid" },
         { name: "Whatsapp - Paid", type: "Paid" },
+        { name: "Whatsapp Paid - Remarketing", type: "Paid" },
         { name: "Justdial", type: "Paid" },
         { name: "GMB Trinity", type: "Paid" },
         { name: "Practo", type: "Paid" },
@@ -1456,6 +1461,7 @@
         { name: "Awareness Meta", type: "Paid" },
         { name: "Brand Video Delhi", type: "Paid" },
         { name: "Mammogram Delhi", type: "Paid" },
+        { name: "Mouth Screening Delhi", type: "Paid" },
         { name: "GZB Branding", type: "Paid" },
         { name: "Offline flex/Hoardings", type: "Paid" },
         // Free
@@ -1504,10 +1510,12 @@
         'Social Media - DEL Leadform',
         'Social Media - BLR',
         'Whatsapp - Paid',
+        'Whatsapp Paid - Remarketing',
         'Whatsapp Paid - BLR',
         'Brand Video Delhi',
         'Brand Video Blr',
-        'Mammogram Delhi'
+        'Mammogram Delhi',
+        'Mouth Screening Delhi'
       ]);
 
       // Google Ads cluster — split by region. CAC is cumulative WITHIN each region.
@@ -1526,6 +1534,7 @@
         "Delhi::Website": 70,
         "Delhi::Inbound Phone-Google": 70,
         "Delhi::Whatsapp - Paid": 25,
+        "Delhi::Whatsapp Paid - Remarketing": 25,
         "Delhi::Inbound Phone - SEO Old": 40,
         "Delhi::Justdial": 35,
         "Delhi::Social Media": 30,
@@ -2891,6 +2900,7 @@
            blr                  → Social Media - BLR
            leadgen              → Social Media - DEL Leadform
            inbound              → Social Media Inbound
+           remarket             → Whatsapp Paid - Remarketing
            whatsapp             → Whatsapp - Paid
            website              → Social Media
          =========================================================== */
@@ -2903,12 +2913,14 @@
         'Social Media Inbound',
         'Social Media - DEL Leadform',
         'Whatsapp - Paid',
+        'Whatsapp Paid - Remarketing',
         'Whatsapp Paid - BLR',
         'Awareness Meta',
         'Social Media - BLR',
         'Brand Video Delhi',
         'Brand Video Blr',
-        'Mammogram Delhi'
+        'Mammogram Delhi',
+        'Mouth Screening Delhi'
       ];
       // Quick lookup: is this report source fed by the Social Media sheet?
       const SOCIAL_SHEET_SOURCES = new Set(SOCIAL_BUCKETS);
@@ -2924,9 +2936,12 @@
         }
         // WhatsApp-BLR must be checked BEFORE the generic 'blr' and 'whatsapp' rules.
         if ((v.includes('whatsapp') || v.includes('insta')) && (v.includes('blr') || v.includes('bangalore') || v.includes('blore') || v.includes('bengaluru'))) return 'Whatsapp Paid - BLR';
+        // Remarketing (Delhi) must be checked BEFORE the generic 'whatsapp' rule.
+        if (v.includes('remarket')) return 'Whatsapp Paid - Remarketing';
         if (v.includes('awareness')) return 'Awareness Meta';
         if (v.includes('blr')) return 'Social Media - BLR';
         if (v.includes('mammogram') || v.includes('mammo')) return 'Mammogram Delhi';
+        if (v.includes('mouth')) return 'Mouth Screening Delhi';
         if (v.includes('leadgen') || v.includes('lead gen') || v.includes('leadform') || v.includes('lead form')) return 'Social Media - DEL Leadform';
         if (v.includes('inbound')) return 'Social Media Inbound';
         if (v.includes('whatsapp') || v.includes('insta')) return 'Whatsapp - Paid';
