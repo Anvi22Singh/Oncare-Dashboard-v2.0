@@ -849,6 +849,18 @@
               style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
           </div>
           <div>
+            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">Screening Spend Sheet
+              — URL <span class="small-muted">(spend for screening campaigns not in the Meta tracker)</span></label>
+            <input type="text" id="gs-screening-url" placeholder="https://docs.google.com/spreadsheets/d/..."
+              style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
+          </div>
+          <div>
+            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">Screening Spend —
+              Tab Name</label>
+            <input type="text" id="gs-screening-tab" placeholder="Screening"
+              style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
+          </div>
+          <div>
             <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📁 LeadSquared Leads
               Sheet — URL <span class="small-muted">(same columns as the dump)</span></label>
             <input type="text" id="gs-leads-url" placeholder="https://docs.google.com/spreadsheets/d/..."
@@ -878,6 +890,7 @@
           <button class="btn ghost" onclick="testSheetsConnection()">🧪 Test Connection</button>
           <button class="btn ghost" onclick="inspectAdsData()">🔍 Inspect Ads Data</button>
           <button class="btn ghost" onclick="inspectSocialData()">🔍 Inspect Social Data</button>
+          <button class="btn ghost" onclick="inspectScreeningData()">Inspect Screening Data</button>
           <button class="btn ghost" onclick="clearSheetsSettings()">🗑️ Clear Settings</button>
         </div>
         <div id="gs-status" class="small-muted" style="margin-top:10px"></div>
@@ -1575,6 +1588,7 @@
         ipd: null,         // array — IPD tracker rows (current month tab)
         ads: null,         // array — Google Ads sheet rows (live)
         social: null,      // array — Social Media sheet rows (live): WhatsApp/Insta, Test, Inbound, BLR spends
+        screening: null,   // array — Screening Spend sheet rows (live): screening-campaign spend
         spend: {},         // { sourceName: {cpl, totalSpend} }
         refMonth: null,    // YYYY-MM string used as the "current" month
         mtdMaxDay: null    // last day-of-month present in the data (for LMTD trim)
@@ -1599,6 +1613,7 @@
           ipd: state.ipd,
           ads: state.ads,
           social: state.social,
+          screening: state.screening,
           spend: state.spend,
           refMonth: state.refMonth,
           mtdMaxDay: state.mtdMaxDay
@@ -1673,6 +1688,7 @@
             state.ipd = data.ipd || null;
             state.ads = data.ads || null;
             state.social = data.social || null;
+            state.screening = data.screening || null;
             state.raw = data.raw || null;
             state.calls = data.calls || null;
             state.refMonth = data.refMonth || null;
@@ -1722,6 +1738,7 @@
           state.ipd = data.ipd || null;
           state.ads = data.ads || null;
           state.social = data.social || null;
+          state.screening = data.screening || null;
 
           // Daily uploads: only restore if same calendar day
           const savedDate = data.savedAt ? new Date(data.savedAt) : null;
@@ -2559,6 +2576,8 @@
         adsTab: 'ads',
         socialUrl: 'https://docs.google.com/spreadsheets/d/1ovI7ankbWaJEkcRuX1UdTmxciWb94_RvtdIsS2lM6lY/edit?gid=1943630881#gid=1943630881',
         socialTab: 'syncwith data',
+        screeningUrl: '',
+        screeningTab: '',
         leadsUrl: '',
         leadsTab: '',
         callsUrl: '',
@@ -2577,6 +2596,8 @@
         if (s.adsTab) $('#gs-ads-tab').value = s.adsTab;
         if (s.socialUrl) $('#gs-social-url').value = s.socialUrl;
         if (s.socialTab) $('#gs-social-tab').value = s.socialTab;
+        if (s.screeningUrl) $('#gs-screening-url').value = s.screeningUrl;
+        if (s.screeningTab) $('#gs-screening-tab').value = s.screeningTab;
         if (s.leadsUrl) $('#gs-leads-url').value = s.leadsUrl;
         if (s.leadsTab) $('#gs-leads-tab').value = s.leadsTab;
         if (s.callsUrl) $('#gs-calls-url').value = s.callsUrl;
@@ -2606,6 +2627,8 @@
             adsTab: $('#gs-ads-tab').value.trim(),
             socialUrl: $('#gs-social-url').value.trim(),
             socialTab: $('#gs-social-tab').value.trim(),
+            screeningUrl: $('#gs-screening-url').value.trim(),
+            screeningTab: $('#gs-screening-tab').value.trim(),
             leadsUrl: $('#gs-leads-url').value.trim(),
             leadsTab: $('#gs-leads-tab').value.trim(),
             callsUrl: $('#gs-calls-url').value.trim(),
@@ -2616,7 +2639,7 @@
       function clearSheetsSettings() {
         if (!confirm('Clear saved API key and sheet URLs?')) return;
         localStorage.removeItem(GS_SETTINGS_KEY);
-        ['gs-api-key', 'gs-opd-url', 'gs-opd-tab', 'gs-opdblr-url', 'gs-opdblr-tab', 'gs-ipd-url', 'gs-ipd-tab', 'gs-ads-url', 'gs-ads-tab', 'gs-social-url', 'gs-social-tab', 'gs-leads-url', 'gs-leads-tab', 'gs-calls-url', 'gs-calls-tab'].forEach(id => {
+        ['gs-api-key', 'gs-opd-url', 'gs-opd-tab', 'gs-opdblr-url', 'gs-opdblr-tab', 'gs-ipd-url', 'gs-ipd-tab', 'gs-ads-url', 'gs-ads-tab', 'gs-social-url', 'gs-social-tab', 'gs-screening-url', 'gs-screening-tab', 'gs-leads-url', 'gs-leads-tab', 'gs-calls-url', 'gs-calls-tab'].forEach(id => {
           const el = document.getElementById(id); if (el) el.value = '';
         });
         setGsStatus('Settings cleared.', 'muted');
@@ -2695,6 +2718,8 @@
         const adsTab = $('#gs-ads-tab').value.trim();
         const socialUrl = $('#gs-social-url').value.trim();
         const socialTab = $('#gs-social-tab').value.trim();
+        const screeningUrl = $('#gs-screening-url').value.trim();
+        const screeningTab = $('#gs-screening-tab').value.trim();
         const leadsUrl = $('#gs-leads-url').value.trim();
         const leadsTab = $('#gs-leads-tab').value.trim();
         const callsUrl = $('#gs-calls-url').value.trim();
@@ -2707,6 +2732,7 @@
         const ipdId = extractSheetId(ipdUrl);
         const adsId = extractSheetId(adsUrl);
         const socialId = extractSheetId(socialUrl);
+        const screeningId = extractSheetId(screeningUrl);
         const leadsId = extractSheetId(leadsUrl);
         const callsId = extractSheetId(callsUrl);
 
@@ -2715,9 +2741,10 @@
         if (ipdUrl && !ipdId) { setGsStatus('⚠️ IPD URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (adsUrl && !adsId) { setGsStatus('⚠️ Ads URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (socialUrl && !socialId) { setGsStatus('⚠️ Social Media URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
+        if (screeningUrl && !screeningId) { setGsStatus('⚠️ Screening Spend URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (leadsUrl && !leadsId) { setGsStatus('⚠️ LeadSquared Leads URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (callsUrl && !callsId) { setGsStatus('⚠️ Acefone Calls URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
-        if (!opdId && !opdBlrId && !ipdId && !adsId && !socialId && !leadsId && !callsId) { setGsStatus('⚠️ Please provide at least one sheet URL.', 'bad'); return; }
+        if (!opdId && !opdBlrId && !ipdId && !adsId && !socialId && !screeningId && !leadsId && !callsId) { setGsStatus('⚠️ Please provide at least one sheet URL.', 'bad'); return; }
 
         setGsStatus('⏳ Fetching live data from Google Sheets…', 'busy');
         const tasks = [];
@@ -2741,6 +2768,10 @@
           // Wider range (A1:BZ) so the CUSTOM column at AH (past Z) is included.
           fetchSheetRows(socialId, socialTab, apiKey, 'A1:BZ50000').then(rows => { state.social = rows; return ['Social', rows.length]; })
             .catch(e => { throw new Error('Social: ' + e.message); })
+        );
+        if (screeningId && screeningTab) tasks.push(
+          fetchSheetRows(screeningId, screeningTab, apiKey, 'A1:BZ50000').then(rows => { state.screening = rows; return ['Screening', rows.length]; })
+            .catch(e => { throw new Error('Screening: ' + e.message); })
         );
         // LeadSquared leads from a shared sheet (same columns as the dump) → drives the whole dashboard.
         let leadsLoaded = false;
@@ -2920,8 +2951,7 @@
         'Social Media - BLR',
         'Brand Video Delhi',
         'Brand Video Blr',
-        'Mammogram Delhi',
-        'Mouth Screening Delhi'
+        'Mammogram Delhi'
       ];
       // Quick lookup: is this report source fed by the Social Media sheet?
       const SOCIAL_SHEET_SOURCES = new Set(SOCIAL_BUCKETS);
@@ -2942,7 +2972,6 @@
         if (v.includes('awareness')) return 'Awareness Meta';
         if (v.includes('blr')) return 'Social Media - BLR';
         if (v.includes('mammogram') || v.includes('mammo')) return 'Mammogram Delhi';
-        if (v.includes('mouth')) return 'Mouth Screening Delhi';
         if (v.includes('leadgen') || v.includes('lead gen') || v.includes('leadform') || v.includes('lead form')) return 'Social Media - DEL Leadform';
         if (v.includes('inbound')) return 'Social Media Inbound';
         if (v.includes('whatsapp') || v.includes('insta')) return 'Whatsapp - Paid';
@@ -2981,6 +3010,109 @@
           spend: findKey(sample, 'Amount spent (INR)') || findKey(sample, 'Amount spent') || findKey(sample, 'Amount') || findKey(sample, 'Spend') || null,
           day: findKey(sample, 'Day') || findKey(sample, 'Date') || null
         };
+      }
+
+      /* ===========================================================
+         SCREENING SPEND SHEET
+         A separate sheet holding spend for screening campaigns that are NOT in
+         the Meta/social tracker. Same shape as the social sheet: many sources in
+         one tab, picked out by a source/campaign column, with a date and an
+         amount. Add a source here (and to SCREENING_SHEET_SOURCES) rather than
+         to SOCIAL_BUCKETS when its spend lives in this sheet.
+         =========================================================== */
+      const SCREENING_SHEET_SOURCES = new Set([
+        'Mouth Screening Delhi'
+      ]);
+
+      // Map a raw source/campaign value from the sheet to a report source.
+      function mapScreeningSource(val) {
+        const v = String(val || '').toLowerCase().trim();
+        if (!v) return null;
+        if (v.includes('mouth') || v.includes('oral screen')) return 'Mouth Screening Delhi';
+        return null;
+      }
+
+      // Resolve the three columns we care about (case/space tolerant), so the
+      // sheet's exact headers can vary without breaking this.
+      function detectScreeningCols(sample) {
+        if (!sample) return {};
+        return {
+          src: findKey(sample, 'CUSTOM') || findKey(sample, 'Custom') || findKey(sample, 'Campaign Name') ||
+               findKey(sample, 'Campaign') || findKey(sample, 'Source') || findKey(sample, 'Bucket') ||
+               findKey(sample, 'Category') || null,
+          spend: findKey(sample, 'Amount spent (INR)') || findKey(sample, 'Amount spent') ||
+                 findKey(sample, 'Amount') || findKey(sample, 'Spend') || findKey(sample, 'Cost') || null,
+          day: findKey(sample, 'Day') || findKey(sample, 'Date') || null
+        };
+      }
+
+      // Sum spend (excl GST) for one source within a date range. Mirror of aggregateSocial.
+      function aggregateScreening(fromStr, toStr, source) {
+        if (!state.screening || !state.screening.length) return { spend: 0, rows: 0 };
+        const cols = detectScreeningCols(state.screening[0]);
+        if (!cols.src || !cols.spend) return { spend: 0, rows: 0 };
+        let total = 0, matched = 0;
+        state.screening.forEach(r => {
+          if (mapScreeningSource(r[cols.src]) !== source) return;
+          if (cols.day) {
+            const d = parseDate(r[cols.day]);
+            if (d) {
+              const k = dateKey(d);
+              if (fromStr && k < fromStr) return;
+              if (toStr && k > toStr) return;
+            }
+          }
+          total += parseRupee(r[cols.spend]);
+          matched++;
+        });
+        return { spend: total, rows: matched };
+      }
+
+      /* Spend (excl GST) for a source from whichever sheet feeds it, else null.
+         Keeping both lookups behind one helper means a source can be moved
+         between the two sheets by editing the Sets alone. */
+      function sheetFedSpend(name, fromStr, toStr) {
+        if (SCREENING_SHEET_SOURCES.has(name) && state.screening && state.screening.length)
+          return aggregateScreening(fromStr, toStr, name).spend;
+        if (SOCIAL_SHEET_SOURCES.has(name) && state.social && state.social.length)
+          return aggregateSocial(fromStr, toStr, name).spend;
+        return 0;
+      }
+      function isSheetFed(name) {
+        return (SCREENING_SHEET_SOURCES.has(name) && !!(state.screening && state.screening.length)) ||
+               (SOCIAL_SHEET_SOURCES.has(name) && !!(state.social && state.social.length));
+      }
+
+      function inspectScreeningData() {
+        if (!state.screening || !state.screening.length) {
+          alert('No screening spend data loaded. Add the Screening Spend sheet URL + tab name, then click "Refresh from Google Sheets" first.');
+          return;
+        }
+        const first = state.screening[0];
+        const headers = Object.keys(first);
+        const cols = detectScreeningCols(first);
+        const tally = {};
+        if (cols.src) state.screening.forEach(r => {
+          const v = (String(r[cols.src] || '').trim()) || '(blank)';
+          tally[v] = (tally[v] || 0) + 1;
+        });
+        const lines = Object.keys(tally).sort().map(v =>
+          '  "' + v + '" x' + tally[v] + ' -> ' + (mapScreeningSource(v) || 'UNMAPPED (ignored)')
+        ).join('\n');
+        alert([
+          'Screening Spend sheet - ' + state.screening.length + ' rows',
+          '',
+          'Detected columns:',
+          '  Source/campaign -> ' + (cols.src || 'NOT FOUND'),
+          '  Amount spent    -> ' + (cols.spend || 'NOT FOUND'),
+          '  Day             -> ' + (cols.day || 'NOT FOUND'),
+          '',
+          'Distinct source values -> report source:',
+          (lines || '  (none)'),
+          '',
+          'All columns (' + headers.length + '): ' + headers.join(', ')
+        ].join('\n'));
+        console.log('Screening inspect:', { headers, detected: cols, tally, sample: state.screening.slice(0, 5) });
       }
 
       function renderSocial() {
@@ -3269,34 +3401,66 @@
         return map;
       }
 
+      /* One definition of the two windows the source-wise table compares, used by
+         both the table and its caption so the numbers and the label can never drift.
+
+         Day-of-month bounds are read straight off the YYYY-MM-DD strings. Going
+         through new Date('2026-09-01') parses it as UTC midnight, which reports the
+         previous day in any timezone behind UTC — that zeroed every LMTD column
+         outside India.
+
+         Averages divide by the number of DAYS IN THE WINDOW, not by the number of
+         days that happen to carry a lead: a quiet day has to pull the average down,
+         and both columns must share one denominator to be comparable. */
+      function srcWindow() {
+        const range = getMtdRange();
+        const from = $('#src-from').value || (range ? range.from : '');
+        const to = $('#src-to').value || (range ? range.to : '');
+        if (!from && !to) return null;
+        const ymd = t => ({ y: +t.slice(0, 4), m: +t.slice(5, 7), d: +t.slice(8, 10) });
+        const A = ymd(from || to), B = ymd(to || from);
+        const prevY = A.m === 1 ? A.y - 1 : A.y;
+        const prevM = A.m === 1 ? 12 : A.m - 1;
+        const daysInPrev = new Date(prevY, prevM, 0).getDate();
+        const lmToDay = Math.min(B.d, daysInPrev);
+        const pad = n => String(n).padStart(2, '0');
+        return {
+          from, to,
+          fromDay: A.d, toDay: B.d,
+          prevY, prevM,
+          lmFrom: `${prevY}-${pad(prevM)}-${pad(A.d)}`,
+          lmTo: `${prevY}-${pad(prevM)}-${pad(lmToDay)}`,
+          // inclusive calendar-day counts, matching each filter exactly
+          mtdDays: Math.max(1, Math.round((Date.UTC(B.y, B.m - 1, B.d) - Date.UTC(A.y, A.m - 1, A.d)) / 86400000) + 1),
+          lmtdDays: Math.max(1, lmToDay - A.d + 1)
+        };
+      }
+
       function buildSourceTable(region, sourceRows) {
         // Apply From/To date range filter if the user picked dates
-        const fromVal = $('#src-from').value;
-        const toVal = $('#src-to').value;
-        let mtdRows, lmtdRows;
-        if (fromVal || toVal) {
-          // CURRENT column: every dump lead with Created On in [from, to] (full dump, not month-limited).
-          mtdRows = filterByDateRange(state.raw || [], fromVal, toVal, 'Created On');
-          // LMTD column: same day-of-month window, one calendar month before the selected range.
-          const fromDay = fromVal ? new Date(fromVal).getDate() : 1;
-          const toDay = toVal ? new Date(toVal).getDate() : 31;
-          const refD = new Date(fromVal || toVal);
-          const py = refD.getMonth() === 0 ? refD.getFullYear() - 1 : refD.getFullYear();
-          const pm = refD.getMonth() === 0 ? 11 : refD.getMonth() - 1;
+        const W = srcWindow();
+        const fromVal = W ? W.from : '';
+        const toVal = W ? W.to : '';
+        let mtdRows, lmtdRows, mtdDays, lmtdDays;
+        if (W) {
+          // CURRENT column: every dump lead with Created On in [from, to].
+          mtdRows = filterByDateRange(state.raw || [], W.from, W.to, 'Created On');
+          // LMTD column: the same days of the month, one calendar month earlier.
           lmtdRows = (state.raw || []).filter(r => {
             const d = parseDate(r['Created On']);
-            return d && d.getFullYear() === py && d.getMonth() === pm
-              && d.getDate() >= fromDay && d.getDate() <= toDay;
+            return d && d.getFullYear() === W.prevY && (d.getMonth() + 1) === W.prevM
+              && d.getDate() >= W.fromDay && d.getDate() <= W.toDay;
           });
+          mtdDays = W.mtdDays;
+          lmtdDays = W.lmtdDays;
         } else {
           mtdRows = state.mtd || [];
           lmtdRows = state.lmtd || [];
+          mtdDays = uniqueDates(mtdRows, 'Created On').length || 1;
+          lmtdDays = uniqueDates(lmtdRows, 'Created On').length || 1;
         }
         const mtdAgg = aggregateBySource(mtdRows);
         const lmtdAgg = aggregateBySource(lmtdRows);
-
-        const mtdDays = uniqueDates(mtdRows, 'Created On').length || 1;
-        const lmtdDays = uniqueDates(lmtdRows, 'Created On').length || 1;
 
         // OPD/IPD counts from BD trackers, aligned to MTD range (1st of month → as-of)
         const mtdRange = getMtdRange();
@@ -3420,8 +3584,8 @@
           // Window = the report's MTD range (1st of month → as-of/yesterday), same as ads.
           // tspend is set here (incl GST); CPL for the 5 AUTO_CPL social sources is then
           // derived in the AUTO_CPL block below. Awareness Meta = spend only, blank CPL.
-          if (socialAvailable && SOCIAL_SHEET_SOURCES.has(r.name)) {
-            const sExcl = aggregateSocial(adsFrom, adsTo, r.name).spend;
+          if (isSheetFed(r.name)) {
+            const sExcl = sheetFedSpend(r.name, adsFrom, adsTo);
             tspend = sExcl > 0 ? sExcl * (1 + GST_RATE) : null;
             if (r.name === 'Awareness Meta') cpl = null;
           }
@@ -3585,11 +3749,22 @@
         }
         $('#source-delhi').innerHTML = buildSourceTable('Delhi', SOURCE_ROWS_DELHI);
         $('#source-blr').innerHTML = buildSourceTable('Bangalore', SOURCE_ROWS_BLR);
+        const W = srcWindow();
+        const note = $('#src-note-delhi');
         if (!state.lmtd || !state.lmtd.length) {
-          $('#src-note-delhi').style.display = 'block';
-          $('#src-note-delhi').innerHTML = '⚠️ No previous-month rows found in the uploaded dump — LMTD columns show 0. Make sure your dump starts from the 1st of last month.';
+          note.style.display = 'block';
+          note.style.background = '#fff8e1';
+          note.style.borderLeftColor = 'var(--warn)';
+          note.innerHTML = '⚠️ No previous-month rows found in the uploaded dump — LMTD columns show 0. Make sure your dump starts from the 1st of last month.';
+        } else if (W) {
+          note.style.display = 'block';
+          note.style.background = '#f8f4ff';
+          note.style.borderLeftColor = 'var(--accent)';
+          note.innerHTML = `Counting window — <b>MTD ${W.from} → ${W.to}</b> (÷ ${W.mtdDays} days) ` +
+            `vs <b>LMTD ${W.lmFrom} → ${W.lmTo}</b> (÷ ${W.lmtdDays} days). ` +
+            `Averages divide by days in the window, not by days that carried a lead.`;
         } else {
-          $('#src-note-delhi').style.display = 'none';
+          note.style.display = 'none';
         }
       }
 
@@ -3797,13 +3972,13 @@
               if (daysInMonth > 0) oneDaySpend = FIXED_SPEND_INCL_GST[r.name] / daysInMonth;
             }
             if (m.total > 0) cpl = oneDaySpend / m.total;
-          } else if (socialAvailable && SOCIAL_SHEET_SOURCES.has(r.name) && d1Date) {
+          } else if (isSheetFed(r.name) && d1Date) {
             // Social Media sheet — D-1 CPL = (yesterday's spend incl GST) ÷ yesterday's leads.
             // Awareness Meta = spend only, blank CPL.
             if (r.name === 'Awareness Meta') {
               cpl = null;
             } else {
-              const inc = aggregateSocial(d1Date, d1Date, r.name).spend * (1 + GST_RATE);
+              const inc = sheetFedSpend(r.name, d1Date, d1Date) * (1 + GST_RATE);
               cpl = (inc > 0 && m.total > 0) ? inc / m.total : null;
             }
           } else {
@@ -3820,7 +3995,7 @@
             regionGaSources.has(r.name) ||
             r.name === 'GDN' ||
             FIXED_SPEND_INCL_GST[r.name] !== undefined ||  // Justdial/Practo auto in D-1
-            (socialAvailable && SOCIAL_SHEET_SOURCES.has(r.name))  // social sources auto when sheet connected
+            isSheetFed(r.name)  // sheet-fed sources auto when their sheet is connected
           );
 
           const isFirstMerge = r.name === mergeGroup[0];
