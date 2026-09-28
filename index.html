@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-09-18 v14 — LMTD window + averages fixed; Mouth Screening spend from its own sheet; GMB Trinity moved to BLR';</script>
+  <script>window.__BUILD__ = '2026-09-26 v15 — added BLR source: Referral - BLR';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -1340,6 +1340,7 @@
         "Manual(Referral)": "Referral",
         "khetarpal refferal": "Referral",
         "SCI": "Referral",
+        "Referral - BLR": "Referral - BLR",
         "WhatsApp SEO": "Whatsapp-SEO",
         "SEO Delhi": "SEO Delhi",
         "Practo": "Practo",
@@ -1453,7 +1454,7 @@
       const BLR_SOURCES = new Set([
         "Website Blr", "Google Inbound - Blr", "Inbound SEO Blr",
         "SEO Blr", "Offline Flex/Hoardings - Blr", "Social Media - BLR", "Brand Video Blr", "Whatsapp Paid - BLR",
-        "GMB Trinity"
+        "GMB Trinity", "Referral - BLR"
       ]);
 
       // Source row order + Paid/Free classification per your screenshots
@@ -1501,7 +1502,8 @@
         { name: "GMB Trinity", type: "Paid" },
         { name: "Inbound SEO Blr", type: "Free" },
         { name: "SEO Blr", type: "Free" },
-        { name: "Offline Flex/Hoardings - Blr", type: "Free" }
+        { name: "Offline Flex/Hoardings - Blr", type: "Free" },
+        { name: "Referral - BLR", type: "Free" }
       ];
 
       // 18% GST applied to spend inputs to derive Total Spend (incl GST)
