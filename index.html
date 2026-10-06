@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-10-06 v16 — zone report rebuilt to the current 12 zones';</script>
+  <script>window.__BUILD__ = '2026-10-06 v19 — screening sheets: OPDs + spend (date col N, spend col D, source col T)';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -861,6 +861,18 @@
               style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
           </div>
           <div>
+            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">Screening OPD Tracker
+              — URL <span class="small-muted">(OPDs for Mammogram Delhi &amp; Mouth Screening Delhi)</span></label>
+            <input type="text" id="gs-screenopd-url" placeholder="https://docs.google.com/spreadsheets/d/..."
+              style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
+          </div>
+          <div>
+            <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">Screening OPD Tracker —
+              Tab Name</label>
+            <input type="text" id="gs-screenopd-tab" placeholder="Screening OPDs"
+              style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px" />
+          </div>
+          <div>
             <label class="small-muted" style="font-weight:600;display:block;margin-bottom:4px">📁 LeadSquared Leads
               Sheet — URL <span class="small-muted">(same columns as the dump)</span></label>
             <input type="text" id="gs-leads-url" placeholder="https://docs.google.com/spreadsheets/d/..."
@@ -891,6 +903,7 @@
           <button class="btn ghost" onclick="inspectAdsData()">🔍 Inspect Ads Data</button>
           <button class="btn ghost" onclick="inspectSocialData()">🔍 Inspect Social Data</button>
           <button class="btn ghost" onclick="inspectScreeningData()">Inspect Screening Data</button>
+          <button class="btn ghost" onclick="inspectScreeningOpd()">Inspect Screening OPDs</button>
           <button class="btn ghost" onclick="clearSheetsSettings()">🗑️ Clear Settings</button>
         </div>
         <div id="gs-status" class="small-muted" style="margin-top:10px"></div>
@@ -1600,6 +1613,7 @@
         ads: null,         // array — Google Ads sheet rows (live)
         social: null,      // array — Social Media sheet rows (live): WhatsApp/Insta, Test, Inbound, BLR spends
         screening: null,   // array — Screening Spend sheet rows (live): screening-campaign spend
+        screenOpd: null,   // array — Screening OPD tracker rows, normalised onto 'Opd Date' / 'ORIGINAL SOURCE'
         spend: {},         // { sourceName: {cpl, totalSpend} }
         refMonth: null,    // YYYY-MM string used as the "current" month
         mtdMaxDay: null    // last day-of-month present in the data (for LMTD trim)
@@ -1625,6 +1639,7 @@
           ads: state.ads,
           social: state.social,
           screening: state.screening,
+          screenOpd: state.screenOpd,
           spend: state.spend,
           refMonth: state.refMonth,
           mtdMaxDay: state.mtdMaxDay
@@ -1700,6 +1715,7 @@
             state.ads = data.ads || null;
             state.social = data.social || null;
             state.screening = data.screening || null;
+            state.screenOpd = data.screenOpd || null;
             state.raw = data.raw || null;
             state.calls = data.calls || null;
             state.refMonth = data.refMonth || null;
@@ -1750,6 +1766,7 @@
           state.ads = data.ads || null;
           state.social = data.social || null;
           state.screening = data.screening || null;
+          state.screenOpd = data.screenOpd || null;
 
           // Daily uploads: only restore if same calendar day
           const savedDate = data.savedAt ? new Date(data.savedAt) : null;
@@ -2239,11 +2256,72 @@
       // Combine Delhi + Bengaluru OPD sheets into a single array for aggregation.
       // Source matching naturally routes rows to the right dashboard source because
       // each region's sheet contains region-specific ORIGINAL SOURCE values.
+      /* ===========================================================
+         SCREENING OPD TRACKER
+         A separate sheet holding the OPDs booked off the screening campaigns
+         (Mammogram Delhi, Mouth Screening Delhi), which are not recorded in the
+         main OPD trackers. Its rows are rewritten onto the same two column names
+         the other trackers use — 'Opd Date' and 'ORIGINAL SOURCE' — so everything
+         downstream (source-wise OPD/CAC, BD L2O/L2I, owner-wise) treats them as
+         ordinary OPD rows and needs no change of its own.
+         =========================================================== */
+      function screeningOpdSource(raw) {
+        // The sheet's own wording first; fall back to the two screening campaigns
+        // so "Mammogram" or "Mouth Screening" land on the right report row.
+        const exact = normalizeCustomSource(raw);
+        if (exact) return exact;
+        const v = String(raw || '').toLowerCase().trim();
+        if (v.includes('mammo')) return 'Mammogram Delhi';
+        if (v.includes('mouth') || v.includes('oral screen')) return 'Mouth Screening Delhi';
+        return raw;
+      }
+      function detectScreenOpdCols(sample) {
+        if (!sample) return {};
+        return {
+          date: findKey(sample, 'Opd Date') || findKey(sample, 'OPD Date') || findKey(sample, 'Date') || null,
+          src: findKey(sample, 'ORIGINAL SOURCE') || findKey(sample, 'Original Source') ||
+               findKey(sample, 'Source') || findKey(sample, 'Patient Source') || findKey(sample, 'Campaign') || null
+        };
+      }
+      function normalizeScreeningOpdRows(rows) {
+        if (!rows || !rows.length) return [];
+        const cols = detectScreenOpdCols(rows[0]);
+        if (!cols.date || !cols.src) return [];
+        return rows.map(r => Object.assign({}, r, {
+          'Opd Date': r[cols.date],
+          'ORIGINAL SOURCE': screeningOpdSource(r[cols.src])
+        })).filter(r => r['Opd Date'] && r['ORIGINAL SOURCE']);
+      }
+      function inspectScreeningOpd() {
+        if (!state.screenOpd || !state.screenOpd.length) {
+          alert('No screening OPD data loaded. Add the Screening OPD Tracker URL + tab name, then click "Refresh from Google Sheets" first.');
+          return;
+        }
+        const tally = {};
+        state.screenOpd.forEach(r => {
+          const k = String(r['ORIGINAL SOURCE'] || '(blank)').trim();
+          tally[k] = (tally[k] || 0) + 1;
+        });
+        const lines = Object.keys(tally).sort().map(v =>
+          '  "' + v + '" x' + tally[v] + ' -> ' + (normalizeCustomSource(v) || 'NOT A REPORT SOURCE (ignored)')
+        ).join('\n');
+        alert([
+          'Screening OPD tracker - ' + state.screenOpd.length + ' usable rows',
+          '',
+          'Resolved source -> report row:',
+          lines,
+          '',
+          'Dates seen: ' + state.screenOpd.slice(0, 5).map(r => r['Opd Date']).join(', ')
+        ].join('\n'));
+        console.log('Screening OPD inspect:', { tally, sample: state.screenOpd.slice(0, 5) });
+      }
+
       function getAllOpd() {
         const d = state.opd || [];
         const b = state.opdBlr || [];
-        if (!d.length && !b.length) return null;
-        return [...d, ...b];
+        const sc = state.screenOpd || [];
+        if (!d.length && !b.length && !sc.length) return null;
+        return [...d, ...b, ...sc];
       }
 
       // Count rows from OPD/IPD tracker per (custom) source within a date range
@@ -2589,6 +2667,8 @@
         socialTab: 'syncwith data',
         screeningUrl: '',
         screeningTab: '',
+        screenOpdUrl: '',
+        screenOpdTab: '',
         leadsUrl: '',
         leadsTab: '',
         callsUrl: '',
@@ -2609,6 +2689,8 @@
         if (s.socialTab) $('#gs-social-tab').value = s.socialTab;
         if (s.screeningUrl) $('#gs-screening-url').value = s.screeningUrl;
         if (s.screeningTab) $('#gs-screening-tab').value = s.screeningTab;
+        if (s.screenOpdUrl) $('#gs-screenopd-url').value = s.screenOpdUrl;
+        if (s.screenOpdTab) $('#gs-screenopd-tab').value = s.screenOpdTab;
         if (s.leadsUrl) $('#gs-leads-url').value = s.leadsUrl;
         if (s.leadsTab) $('#gs-leads-tab').value = s.leadsTab;
         if (s.callsUrl) $('#gs-calls-url').value = s.callsUrl;
@@ -2640,6 +2722,8 @@
             socialTab: $('#gs-social-tab').value.trim(),
             screeningUrl: $('#gs-screening-url').value.trim(),
             screeningTab: $('#gs-screening-tab').value.trim(),
+            screenOpdUrl: $('#gs-screenopd-url').value.trim(),
+            screenOpdTab: $('#gs-screenopd-tab').value.trim(),
             leadsUrl: $('#gs-leads-url').value.trim(),
             leadsTab: $('#gs-leads-tab').value.trim(),
             callsUrl: $('#gs-calls-url').value.trim(),
@@ -2650,7 +2734,7 @@
       function clearSheetsSettings() {
         if (!confirm('Clear saved API key and sheet URLs?')) return;
         localStorage.removeItem(GS_SETTINGS_KEY);
-        ['gs-api-key', 'gs-opd-url', 'gs-opd-tab', 'gs-opdblr-url', 'gs-opdblr-tab', 'gs-ipd-url', 'gs-ipd-tab', 'gs-ads-url', 'gs-ads-tab', 'gs-social-url', 'gs-social-tab', 'gs-screening-url', 'gs-screening-tab', 'gs-leads-url', 'gs-leads-tab', 'gs-calls-url', 'gs-calls-tab'].forEach(id => {
+        ['gs-api-key', 'gs-opd-url', 'gs-opd-tab', 'gs-opdblr-url', 'gs-opdblr-tab', 'gs-ipd-url', 'gs-ipd-tab', 'gs-ads-url', 'gs-ads-tab', 'gs-social-url', 'gs-social-tab', 'gs-screening-url', 'gs-screening-tab', 'gs-screenopd-url', 'gs-screenopd-tab', 'gs-leads-url', 'gs-leads-tab', 'gs-calls-url', 'gs-calls-tab'].forEach(id => {
           const el = document.getElementById(id); if (el) el.value = '';
         });
         setGsStatus('Settings cleared.', 'muted');
@@ -2731,6 +2815,8 @@
         const socialTab = $('#gs-social-tab').value.trim();
         const screeningUrl = $('#gs-screening-url').value.trim();
         const screeningTab = $('#gs-screening-tab').value.trim();
+        const screenOpdUrl = $('#gs-screenopd-url').value.trim();
+        const screenOpdTab = $('#gs-screenopd-tab').value.trim();
         const leadsUrl = $('#gs-leads-url').value.trim();
         const leadsTab = $('#gs-leads-tab').value.trim();
         const callsUrl = $('#gs-calls-url').value.trim();
@@ -2744,6 +2830,7 @@
         const adsId = extractSheetId(adsUrl);
         const socialId = extractSheetId(socialUrl);
         const screeningId = extractSheetId(screeningUrl);
+        const screenOpdId = extractSheetId(screenOpdUrl);
         const leadsId = extractSheetId(leadsUrl);
         const callsId = extractSheetId(callsUrl);
 
@@ -2753,9 +2840,10 @@
         if (adsUrl && !adsId) { setGsStatus('⚠️ Ads URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (socialUrl && !socialId) { setGsStatus('⚠️ Social Media URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (screeningUrl && !screeningId) { setGsStatus('⚠️ Screening Spend URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
+        if (screenOpdUrl && !screenOpdId) { setGsStatus('⚠️ Screening OPD Tracker URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (leadsUrl && !leadsId) { setGsStatus('⚠️ LeadSquared Leads URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
         if (callsUrl && !callsId) { setGsStatus('⚠️ Acefone Calls URL doesn\'t look like a Google Sheets URL.', 'bad'); return; }
-        if (!opdId && !opdBlrId && !ipdId && !adsId && !socialId && !screeningId && !leadsId && !callsId) { setGsStatus('⚠️ Please provide at least one sheet URL.', 'bad'); return; }
+        if (!opdId && !opdBlrId && !ipdId && !adsId && !socialId && !screeningId && !screenOpdId && !leadsId && !callsId) { setGsStatus('⚠️ Please provide at least one sheet URL.', 'bad'); return; }
 
         setGsStatus('⏳ Fetching live data from Google Sheets…', 'busy');
         const tasks = [];
@@ -2779,6 +2867,12 @@
           // Wider range (A1:BZ) so the CUSTOM column at AH (past Z) is included.
           fetchSheetRows(socialId, socialTab, apiKey, 'A1:BZ50000').then(rows => { state.social = rows; return ['Social', rows.length]; })
             .catch(e => { throw new Error('Social: ' + e.message); })
+        );
+        if (screenOpdId && screenOpdTab) tasks.push(
+          fetchSheetRows(screenOpdId, screenOpdTab, apiKey, 'A1:BZ50000').then(rows => {
+            state.screenOpd = normalizeScreeningOpdRows(rows);
+            return ['Screening OPDs', state.screenOpd.length];
+          }).catch(e => { throw new Error('Screening OPDs: ' + e.message); })
         );
         if (screeningId && screeningTab) tasks.push(
           fetchSheetRows(screeningId, screeningTab, apiKey, 'A1:BZ50000').then(rows => { state.screening = rows; return ['Screening', rows.length]; })
@@ -2961,8 +3055,7 @@
         'Awareness Meta',
         'Social Media - BLR',
         'Brand Video Delhi',
-        'Brand Video Blr',
-        'Mammogram Delhi'
+        'Brand Video Blr'
       ];
       // Quick lookup: is this report source fed by the Social Media sheet?
       const SOCIAL_SHEET_SOURCES = new Set(SOCIAL_BUCKETS);
@@ -2982,7 +3075,6 @@
         if (v.includes('remarket')) return 'Whatsapp Paid - Remarketing';
         if (v.includes('awareness')) return 'Awareness Meta';
         if (v.includes('blr')) return 'Social Media - BLR';
-        if (v.includes('mammogram') || v.includes('mammo')) return 'Mammogram Delhi';
         if (v.includes('leadgen') || v.includes('lead gen') || v.includes('leadform') || v.includes('lead form')) return 'Social Media - DEL Leadform';
         if (v.includes('inbound')) return 'Social Media Inbound';
         if (v.includes('whatsapp') || v.includes('insta')) return 'Whatsapp - Paid';
@@ -3032,7 +3124,8 @@
          to SOCIAL_BUCKETS when its spend lives in this sheet.
          =========================================================== */
       const SCREENING_SHEET_SOURCES = new Set([
-        'Mouth Screening Delhi'
+        'Mouth Screening Delhi',
+        'Mammogram Delhi'
       ]);
 
       // Map a raw source/campaign value from the sheet to a report source.
@@ -3040,20 +3133,37 @@
         const v = String(val || '').toLowerCase().trim();
         if (!v) return null;
         if (v.includes('mouth') || v.includes('oral screen')) return 'Mouth Screening Delhi';
+        if (v.includes('mammo')) return 'Mammogram Delhi';
         return null;
       }
 
       // Resolve the three columns we care about (case/space tolerant), so the
       // sheet's exact headers can vary without breaking this.
+      /* Spreadsheet column letter -> the key at that position. fetchSheetRows builds
+         each row from the header line in column order starting at A, so the Nth key
+         is the Nth column. Falls back to matching on header text when the position
+         is empty — two columns sharing a header name would collapse into one key and
+         shift everything after it. */
+      const SCREENING_SRC_COL = 'T';    // source / campaign
+      const SCREENING_SPEND_COL = 'D';  // amount spent
+      const SCREENING_DAY_COL = 'N';    // date
+      function colKey(sample, letter) {
+        let idx = 0;
+        for (const ch of String(letter).toUpperCase()) idx = idx * 26 + (ch.charCodeAt(0) - 64);
+        const keys = Object.keys(sample || {});
+        return keys[idx - 1] || null;
+      }
       function detectScreeningCols(sample) {
         if (!sample) return {};
         return {
-          src: findKey(sample, 'CUSTOM') || findKey(sample, 'Custom') || findKey(sample, 'Campaign Name') ||
-               findKey(sample, 'Campaign') || findKey(sample, 'Source') || findKey(sample, 'Bucket') ||
-               findKey(sample, 'Category') || null,
-          spend: findKey(sample, 'Amount spent (INR)') || findKey(sample, 'Amount spent') ||
+          src: colKey(sample, SCREENING_SRC_COL) ||
+               findKey(sample, 'CUSTOM') || findKey(sample, 'Campaign Name') ||
+               findKey(sample, 'Campaign') || findKey(sample, 'Source') || null,
+          spend: colKey(sample, SCREENING_SPEND_COL) ||
+                 findKey(sample, 'Amount spent (INR)') || findKey(sample, 'Amount spent') ||
                  findKey(sample, 'Amount') || findKey(sample, 'Spend') || findKey(sample, 'Cost') || null,
-          day: findKey(sample, 'Day') || findKey(sample, 'Date') || null
+          day: colKey(sample, SCREENING_DAY_COL) ||
+               findKey(sample, 'Day') || findKey(sample, 'Date') || null
         };
       }
 
@@ -3114,9 +3224,12 @@
           'Screening Spend sheet - ' + state.screening.length + ' rows',
           '',
           'Detected columns:',
-          '  Source/campaign -> ' + (cols.src || 'NOT FOUND'),
-          '  Amount spent    -> ' + (cols.spend || 'NOT FOUND'),
-          '  Day             -> ' + (cols.day || 'NOT FOUND'),
+          '  Source/campaign  (col ' + SCREENING_SRC_COL + ') -> ' + (cols.src || 'NOT FOUND'),
+          '  Amount spent     (col ' + SCREENING_SPEND_COL + ') -> ' + (cols.spend || 'NOT FOUND'),
+          '  Day / Date       (col ' + SCREENING_DAY_COL + ') -> ' + (cols.day || 'NOT FOUND'),
+          (cols.day ? '' :
+            '  !! No date column found, so spend CANNOT be limited to the report date range -' +
+            '     every row is summed into every period. Tell which column holds the date.'),
           '',
           'Distinct source values -> report source:',
           (lines || '  (none)'),
