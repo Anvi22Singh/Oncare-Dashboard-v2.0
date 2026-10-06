@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-10-06 v19 — screening sheets: OPDs + spend (date col N, spend col D, source col T)';</script>
+  <script>window.__BUILD__ = '2026-10-06 v20 — social & screening sheet spend treated as GST-inclusive (no 18% added)';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -3082,7 +3082,8 @@
         return null;
       }
 
-      // Sum "Amount spent" (excl GST) for one bucket within a date range (mirror of aggregateAds).
+      // Sum "Amount spent" for one bucket within a date range. The sheet records
+      // spend INCLUSIVE of GST, so no GST is added downstream.
       // Returns { spend, rows }.
       function aggregateSocial(fromStr, toStr, bucket) {
         if (!state.social || !state.social.length) return { spend: 0, rows: 0 };
@@ -3167,7 +3168,8 @@
         };
       }
 
-      // Sum spend (excl GST) for one source within a date range. Mirror of aggregateSocial.
+      // Sum spend for one source within a date range. Like the social sheet, this
+      // sheet records spend INCLUSIVE of GST, so no GST is added downstream.
       function aggregateScreening(fromStr, toStr, source) {
         if (!state.screening || !state.screening.length) return { spend: 0, rows: 0 };
         const cols = detectScreeningCols(state.screening[0]);
@@ -3189,7 +3191,7 @@
         return { spend: total, rows: matched };
       }
 
-      /* Spend (excl GST) for a source from whichever sheet feeds it, else null.
+      /* Spend (INCLUSIVE of GST) for a source from whichever sheet feeds it, else 0.
          Keeping both lookups behind one helper means a source can be moved
          between the two sheets by editing the Sets alone. */
       function sheetFedSpend(name, fromStr, toStr) {
@@ -3302,8 +3304,6 @@
           `<tr${isTotal ? ' style="font-weight:700;background:#ede9ff"' : ''}>` +
           `<td>${label}</td>` +
           `<td class="num">${fmtRupees(spend)}</td>` +
-          `<td class="num">${fmtRupees(spend * 0.18)}</td>` +
-          `<td class="num">${fmtRupees(spend * 1.18)}</td>` +
           `</tr>`;
 
         const body = SOCIAL_BUCKETS.map(b => { totSpend += agg[b]; return rowHtml(b, agg[b], false); });
@@ -3324,8 +3324,6 @@
           `<table>` +
           `<thead><tr>` +
           `<th>Source</th>` +
-          `<th class="num">Spend (excl GST)</th>` +
-          `<th class="num">+ 18% GST</th>` +
           `<th class="num">Spend (incl GST)</th>` +
           `</tr></thead>` +
           `<tbody>${body.join('')}${totalRow}</tbody>` +
@@ -3709,8 +3707,11 @@
           // tspend is set here (incl GST); CPL for the 5 AUTO_CPL social sources is then
           // derived in the AUTO_CPL block below. Awareness Meta = spend only, blank CPL.
           if (isSheetFed(r.name)) {
-            const sExcl = sheetFedSpend(r.name, adsFrom, adsTo);
-            tspend = sExcl > 0 ? sExcl * (1 + GST_RATE) : null;
+            /* The Social Media and Screening sheets record spend ALREADY INCLUSIVE
+               of GST, so it is used as-is. Do not apply GST_RATE here — only the
+               manually-entered spend and the Google Ads sheet are GST-exclusive. */
+            const sIncl = sheetFedSpend(r.name, adsFrom, adsTo);
+            tspend = sIncl > 0 ? sIncl : null;
             if (r.name === 'Awareness Meta') cpl = null;
           }
 
@@ -4106,7 +4107,8 @@
             if (r.name === 'Awareness Meta') {
               cpl = null;
             } else {
-              const inc = sheetFedSpend(r.name, d1Date, d1Date) * (1 + GST_RATE);
+              // Sheet spend is already inclusive of GST — no multiplier.
+              const inc = sheetFedSpend(r.name, d1Date, d1Date);
               cpl = (inc > 0 && m.total > 0) ? inc / m.total : null;
             }
           } else {
