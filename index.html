@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-09-26 v15 — added BLR source: Referral - BLR';</script>
+  <script>window.__BUILD__ = '2026-10-06 v16 — zone report rebuilt to the current 12 zones';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -1388,6 +1388,12 @@
         "Koramangala": "Koramangala",
         "Koramangla": "Koramangala",
         "Kalyan nagar": "Kalyan nagar",
+        "North Delhi": "North Delhi",
+        "Basavanagudi": "Basavanagudi",
+        "Rajaji Nagar": "Rajaji Nagar",
+        "Rajajinagar": "Rajaji Nagar",
+        "Varthur Road": "Varthur Road",
+        "Varthur": "Varthur Road",
         "Out of Delhi": "Out of Delhi",
         "Out of Bangalore": "Out of Bangalore"
       };
@@ -1559,13 +1565,16 @@
         "Bangalore::Social Media - BLR": 30
       };
 
+      /* The zones actually reported on. A lead whose Zone is not in these lists is
+         not dropped silently — it lands in the "outside the zone list" count under
+         the tables, with the distinct values named, so a retired zone still
+         receiving leads is visible rather than invisible. */
       const ZONE_ROWS_DELHI = [
-        "Ghaziabad/East Delhi", "Gurgaon", "Noida/Greater Noida", "West Delhi", "South Delhi", "Out of Delhi"
+        "South Delhi", "Noida/Greater Noida", "West Delhi", "North Delhi",
+        "Ghaziabad/East Delhi", "Out of Delhi", "Gurgaon"
       ];
       const ZONE_ROWS_BLR = [
-        "Vijaya nagar", "Banashankari", "HSR layout", "Indiranagar", "Whitefield", "JP nagar",
-        "Malleshwaram", "Electronic city", "Hebbal", "Koramangala", "Bellandur", "Kalyan nagar",
-        "Out of Bangalore"
+        "Basavanagudi", "Kalyan nagar", "Rajaji Nagar", "Varthur Road", "Out of Bangalore"
       ];
       // Combined list (used for counting + unmapped detection)
       const ZONE_ROWS = [...ZONE_ROWS_DELHI, ...ZONE_ROWS_BLR];
@@ -3846,12 +3855,13 @@
         const counts = {};
         ZONE_ROWS.forEach(z => counts[z] = 0);
         let unmapped = 0, blank = 0;
+        const outside = {};
         filtered.forEach(r => {
           const raw = r['Zone'];
           if (!raw || String(raw).trim() === '') { blank++; return; }
           const z = customZone(raw);
           if (z && counts.hasOwnProperty(z)) counts[z]++;
-          else unmapped++;
+          else { unmapped++; const k = String(raw).trim(); outside[k] = (outside[k] || 0) + 1; }
         });
 
         // Build one zone table for a given list of zone rows.
@@ -3875,7 +3885,10 @@
           noteEl.innerHTML =
             `Leads in view (${stageLabel}): <b>${filtered.length}</b>` +
             ` &nbsp;·&nbsp; 🚫 No zone mentioned (blank): <b>${blank}</b>` +
-            ` &nbsp;·&nbsp; ⚠️ Unmapped zone values: <b>${unmapped}</b>`;
+            ` &nbsp;·&nbsp; ⚠️ Outside the zone list: <b>${unmapped}</b>` +
+            (unmapped ? ` <span class="small-muted">(${Object.entries(outside)
+              .sort((a, b) => b[1] - a[1]).slice(0, 12)
+              .map(([k, n]) => `${k} ×${n}`).join(', ')})</span>` : '');
         }
       }
 
