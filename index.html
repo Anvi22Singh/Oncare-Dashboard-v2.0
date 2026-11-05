@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-10-06 v20 — social & screening sheet spend treated as GST-inclusive (no 18% added)';</script>
+  <script>window.__BUILD__ = '2026-11-05 v22 — added BLR source: GMB Whitefield';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -945,6 +945,7 @@
             <option value="disposition">📋 Disposition Sourcewise</option>
             <option value="zone">🗺️ Zone-wise</option>
             <option value="d1">📅 D-1 Report</option>
+            <option value="mom">📆 Month-on-month Conversion</option>
           </select>
         </div>
       </div>
@@ -1057,6 +1058,31 @@
             <div id="d1-blr"></div>
           </div>
         </div>
+      </div>
+
+      <div class="report-pane" id="pane-mom" style="display:none">
+        <div class="card" style="padding:14px 20px;margin-bottom:14px">
+          <div class="filter-row" style="margin:0;flex-wrap:wrap">
+            <label>From month:</label>
+            <input type="month" id="mom-from" value="2025-01" style="width:150px" />
+            <label>To month:</label>
+            <input type="month" id="mom-to" value="2026-09" style="width:150px" />
+            <button class="btn" onclick="loadMomReport()">📥 Load from Google Sheets</button>
+            <span class="small-muted">Reads one tab per month from the OPD &amp; IPD trackers. Tab names are
+              discovered from each sheet, not guessed.</span>
+          </div>
+          <div id="mom-status" class="small-muted" style="margin-top:10px"></div>
+        </div>
+        <div class="card"><h2>Conversion by type of marketing — All centres</h2>
+          <div class="table-wrap"><div id="mom-all"></div></div></div>
+        <div class="card"><h2>Delhi</h2>
+          <div class="table-wrap"><div id="mom-delhi"></div></div></div>
+        <div class="card"><h2>Bangalore</h2>
+          <div class="table-wrap"><div id="mom-blr"></div></div></div>
+        <div class="card"><h2>Tabs matched</h2>
+          <p class="small-muted">Which tab in each tracker was used for each month, so a missing or
+            oddly-named month is visible rather than silently counted as zero.</p>
+          <div class="table-wrap"><div id="mom-tabs"></div></div></div>
       </div>
     </section>
 
@@ -1372,6 +1398,7 @@
         "AEO": "AEO",
         "Website Blr": "Website Blr",
         "GMB Trinity": "GMB Trinity",
+        "GMB Whitefield": "GMB Whitefield",
         "Google Inbound - Blr": "Google Inbound - Blr",
         "SEO Blr": "SEO Blr"
       };
@@ -1473,7 +1500,7 @@
       const BLR_SOURCES = new Set([
         "Website Blr", "Google Inbound - Blr", "Inbound SEO Blr",
         "SEO Blr", "Offline Flex/Hoardings - Blr", "Social Media - BLR", "Brand Video Blr", "Whatsapp Paid - BLR",
-        "GMB Trinity", "Referral - BLR"
+        "GMB Trinity", "Referral - BLR", "GMB Whitefield"
       ]);
 
       // Source row order + Paid/Free classification per your screenshots
@@ -1522,7 +1549,8 @@
         { name: "Inbound SEO Blr", type: "Free" },
         { name: "SEO Blr", type: "Free" },
         { name: "Offline Flex/Hoardings - Blr", type: "Free" },
-        { name: "Referral - BLR", type: "Free" }
+        { name: "Referral - BLR", type: "Free" },
+        { name: "GMB Whitefield", type: "Free" }
       ];
 
       // 18% GST applied to spend inputs to derive Total Spend (incl GST)
@@ -1582,6 +1610,62 @@
          not dropped silently — it lands in the "outside the zone list" count under
          the tables, with the distinct values named, so a retired zone still
          receiving leads is visible rather than invisible. */
+      /* ===========================================================
+         TYPE OF MARKETING
+         The five broad buckets every source rolls up into, per Anvi's mapping.
+         Used by the month-on-month conversion report; the Paid/Free flag on
+         SOURCE_ROWS_* is a separate, older classification and is left alone.
+         =========================================================== */
+      const MARKETING_TYPES = [
+        'Digital Paid', 'Digital Free', 'Offline Sources', 'Referrals/Walkins', 'Outside channels'
+      ];
+      const SOURCE_TYPE_MAP = {
+        // ---- Delhi ----
+        "Website": "Digital Paid",
+        "Inbound Phone-Google": "Digital Paid",
+        "Inbound Phone - SEO Old": "Digital Paid",
+        "Social Media": "Digital Paid",
+        "Social Media Inbound": "Digital Paid",
+        "Social Media - DEL Leadform": "Digital Paid",
+        "Whatsapp - Paid": "Digital Paid",
+        "Whatsapp Paid - Remarketing": "Digital Paid",
+        "Justdial": "Outside channels",
+        "Practo": "Outside channels",
+        "GDN": "Digital Paid",
+        "Awareness GDN": "Digital Paid",
+        "Awareness Meta": "Digital Paid",
+        "Brand Video Delhi": "Digital Paid",
+        "Mammogram Delhi": "Digital Paid",
+        "Mouth Screening Delhi": "Digital Paid",
+        "GZB Branding": "Offline Sources",
+        "Offline flex/Hoardings": "Offline Sources",
+        "AEO": "Digital Free",
+        "Whatsapp-SEO": "Digital Free",
+        "GMB Total": "Digital Free",
+        "Inbound Phone - SEO": "Digital Free",
+        "Inbound SEO Delhi": "Digital Free",
+        "SEO/SEO-FORM": "Digital Free",
+        "Referral": "Referrals/Walkins",
+        "Walkin": "Referrals/Walkins",
+        "Remarketing": "Digital Free",
+        "SEO Delhi": "Digital Free",
+        "Inbound call meta/Youtube": "Digital Free",
+        "Inbound Phone-Call": "Outside channels",
+        // ---- Bangalore ----
+        "Website Blr": "Digital Paid",
+        "Google Inbound - Blr": "Digital Paid",
+        "Social Media - BLR": "Digital Paid",
+        "Whatsapp Paid - BLR": "Digital Paid",
+        "Brand Video Blr": "Digital Paid",
+        "GMB Trinity": "Digital Free",
+        "GMB Whitefield": "Digital Free",
+        "Inbound SEO Blr": "Digital Free",
+        "SEO Blr": "Digital Free",
+        "Offline Flex/Hoardings - Blr": "Offline Sources",
+        "Referral - BLR": "Referrals/Walkins"
+      };
+      function marketingType(source) { return SOURCE_TYPE_MAP[source] || null; }
+
       const ZONE_ROWS_DELHI = [
         "South Delhi", "Noida/Greater Noida", "West Delhi", "North Delhi",
         "Ghaziabad/East Delhi", "Out of Delhi", "Gurgaon"
@@ -3385,8 +3469,199 @@
         }
       }
 
+      /* ===========================================================
+         MONTH-ON-MONTH CONVERSION REPORT
+         Rows = the five types of marketing, columns = one month pair
+         (OPD Conversion / IPD Conversion).
+
+         The OPD and IPD trackers keep one tab per month, and the three of them
+         do not share a naming convention — Delhi carries the year ("Oct'26-Opds"),
+         Bangalore and IPD do not ("Oct-OPDs", "OCT-IPD"). Rather than guess, the
+         tab list is read from each spreadsheet and matched on month, plus year
+         when the name carries one. A month a tracker has no tab for is reported
+         as a gap instead of being silently counted as zero.
+
+         A row's city comes from its source, via BLR_SOURCES — the same rule the
+         rest of the dashboard uses — because the IPD tracker is a single sheet
+         covering both regions.
+         =========================================================== */
+      const MONTH_ABBR = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+      // All tab titles in a spreadsheet.
+      async function fetchSheetTabNames(sheetId, apiKey) {
+        const url = 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(sheetId) +
+          '?fields=sheets.properties.title&key=' + encodeURIComponent(apiKey);
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status + ' reading tab list');
+        const data = await resp.json();
+        return (data.sheets || []).map(x => x.properties && x.properties.title).filter(Boolean);
+      }
+
+      /* Month words must stand alone: a bare substring test matches "mar" inside
+         "Summary" and would silently pick a Summary tab for March. */
+      const MONTH_RE = [
+        /(^|[^a-z])jan(uary)?([^a-z]|$)/,      /(^|[^a-z])feb(ruary)?([^a-z]|$)/,
+        /(^|[^a-z])mar(ch)?([^a-z]|$)/,        /(^|[^a-z])apr(il)?([^a-z]|$)/,
+        /(^|[^a-z])may([^a-z]|$)/,             /(^|[^a-z])jun(e)?([^a-z]|$)/,
+        /(^|[^a-z])jul(y)?([^a-z]|$)/,         /(^|[^a-z])aug(ust)?([^a-z]|$)/,
+        /(^|[^a-z])sep(t(ember)?)?([^a-z]|$)/, /(^|[^a-z])oct(ober)?([^a-z]|$)/,
+        /(^|[^a-z])nov(ember)?([^a-z]|$)/,     /(^|[^a-z])dec(ember)?([^a-z]|$)/
+      ];
+
+      /* Pick the tab for one month out of a sheet's tab list. A tab carrying a
+         year must match that year; one carrying no digits at all is accepted on
+         the month alone, which is how the Bangalore and IPD trackers are named. */
+      function matchMonthTab(tabs, year, monthIdx) {
+        const re = MONTH_RE[monthIdx];
+        const yy = String(year).slice(2), yyyy = String(year);
+        let loose = null;
+        for (const t of tabs) {
+          const low = String(t).toLowerCase();
+          if (!re.test(low)) continue;
+          const digits = low.match(/\d+/g) || [];
+          if (digits.length) {
+            if (digits.indexOf(yy) !== -1 || digits.indexOf(yyyy) !== -1) return t;
+            continue;                      // carries a year, but not this one
+          }
+          if (loose === null) loose = t;   // no year in the name at all
+        }
+        return loose;
+      }
+
+      function monthsBetween(fromYm, toYm) {
+        const a = fromYm.split('-').map(Number), b = toYm.split('-').map(Number);
+        const out = [];
+        let y = a[0], m = a[1];
+        while (y < b[0] || (y === b[0] && m <= b[1])) {
+          out.push({
+            y: y, m: m,
+            key: y + '-' + String(m).padStart(2, '0'),
+            label: MONTH_ABBR[m - 1].toUpperCase() + "'" + String(y).slice(2)
+          });
+          m++; if (m > 12) { m = 1; y++; }
+        }
+        return out;
+      }
+
+      let MOM = null;   // { months, cells, tabsUsed }
+
+      function setMomStatus(msg, kind) {
+        const el = document.getElementById('mom-status'); if (!el) return;
+        el.innerHTML = msg;
+        el.style.color = kind === 'bad' ? 'var(--bad)' : (kind === 'good' ? 'var(--good)' : '');
+      }
+
+      async function loadMomReport() {
+        const apiKey = $('#gs-api-key').value.trim();
+        if (!apiKey) { setMomStatus('Add the API key on Upload &amp; Settings first.', 'bad'); return; }
+        const fromYm = $('#mom-from').value, toYm = $('#mom-to').value;
+        if (!fromYm || !toYm || fromYm > toYm) { setMomStatus('Pick a valid month range.', 'bad'); return; }
+
+        const trackers = [
+          { label: 'OPD Delhi', id: extractSheetId($('#gs-opd-url').value.trim()), dateCol: 'Opd Date', metric: 'opd' },
+          { label: 'OPD Blr', id: extractSheetId($('#gs-opdblr-url').value.trim()), dateCol: 'Opd Date', metric: 'opd' },
+          { label: 'IPD', id: extractSheetId($('#gs-ipd-url').value.trim()), dateCol: 'IPD DATE', metric: 'ipd' }
+        ].filter(function (t) { return !!t.id; });
+        if (!trackers.length) { setMomStatus('No OPD/IPD tracker URLs are filled in.', 'bad'); return; }
+
+        const months = monthsBetween(fromYm, toYm);
+        setMomStatus('Reading tab lists from ' + trackers.length + ' tracker(s)…', 'muted');
+        for (const t of trackers) {
+          try { t.tabs = await fetchSheetTabNames(t.id, apiKey); }
+          catch (e) { setMomStatus('Could not read tabs for ' + t.label + ': ' + e.message, 'bad'); return; }
+        }
+
+        const cells = {};
+        const tabsUsed = [];
+        let done = 0; const total = months.length * trackers.length;
+
+        for (const mo of months) {
+          for (const t of trackers) {
+            const tab = matchMonthTab(t.tabs, mo.y, mo.m - 1);
+            done++;
+            if (!tab) { tabsUsed.push({ month: mo.label, tracker: t.label, tab: null, rows: 0 }); continue; }
+            setMomStatus('Loading ' + mo.label + ' — ' + t.label + ' (' + done + '/' + total + ')…', 'muted');
+            let rows = [];
+            try { rows = await fetchSheetRows(t.id, tab, apiKey, 'A1:BZ20000'); }
+            catch (e) {
+              tabsUsed.push({ month: mo.label, tracker: t.label, tab: tab + ' — ' + e.message, rows: 0 });
+              continue;
+            }
+            let counted = 0;
+            rows.forEach(function (r) {
+              const d = parseTrackerDate(r[t.dateCol], mo.y);
+              if (!d) return;
+              // A row filed in the wrong month's tab is counted in its real month, not this one.
+              if (d.getFullYear() !== mo.y || (d.getMonth() + 1) !== mo.m) return;
+              const src = normalizeCustomSource(r['ORIGINAL SOURCE']);
+              if (!src) return;
+              const type = marketingType(src);
+              if (!type) return;
+              const city = BLR_SOURCES.has(src) ? 'Bangalore' : 'Delhi';
+              const k = mo.key + '|' + city + '|' + type;
+              if (!cells[k]) cells[k] = { opd: 0, ipd: 0 };
+              cells[k][t.metric]++;
+              counted++;
+            });
+            tabsUsed.push({ month: mo.label, tracker: t.label, tab: tab, rows: counted });
+          }
+        }
+        MOM = { months: months, cells: cells, tabsUsed: tabsUsed };
+        renderMomReport();
+        const gaps = tabsUsed.filter(function (x) { return !x.tab; }).length;
+        setMomStatus('Done — ' + months.length + ' months × ' + trackers.length + ' trackers.' +
+          (gaps ? ' <b>' + gaps + ' month/tracker combination(s) had no matching tab</b> — see "Tabs matched" below.' : ''),
+          gaps ? 'bad' : 'good');
+      }
+
+      function momTable(city) {
+        if (!MOM) return '<p class="small-muted">Nothing loaded yet — set the month range and click “Load from Google Sheets”.</p>';
+        const months = MOM.months, cells = MOM.cells;
+        let h = '<table><thead><tr><th rowspan="2">Type of marketing</th>';
+        months.forEach(function (mo) { h += '<th colspan="2" style="text-align:center">' + mo.label + '</th>'; });
+        h += '<th colspan="2" style="text-align:center">TOTAL</th></tr><tr>';
+        months.forEach(function () { h += '<th class="num">OPD</th><th class="num">IPD</th>'; });
+        h += '<th class="num">OPD</th><th class="num">IPD</th></tr></thead><tbody>';
+        const colTot = months.map(function () { return { opd: 0, ipd: 0 }; });
+        const grand = { opd: 0, ipd: 0 };
+        const cityList = city ? [city] : ['Delhi', 'Bangalore'];
+        MARKETING_TYPES.forEach(function (type) {
+          let rowOpd = 0, rowIpd = 0;
+          h += '<tr><td>' + type + '</td>';
+          months.forEach(function (mo, i) {
+            let o = 0, p = 0;
+            cityList.forEach(function (c) {
+              const v = cells[mo.key + '|' + c + '|' + type];
+              if (v) { o += v.opd; p += v.ipd; }
+            });
+            rowOpd += o; rowIpd += p; colTot[i].opd += o; colTot[i].ipd += p;
+            h += '<td class="num">' + (o || '') + '</td><td class="num">' + (p || '') + '</td>';
+          });
+          grand.opd += rowOpd; grand.ipd += rowIpd;
+          h += '<td class="num"><b>' + (rowOpd || '') + '</b></td><td class="num"><b>' + (rowIpd || '') + '</b></td></tr>';
+        });
+        h += '<tr class="total"><td>TOTAL</td>';
+        colTot.forEach(function (c) { h += '<td class="num">' + (c.opd || '') + '</td><td class="num">' + (c.ipd || '') + '</td>'; });
+        h += '<td class="num">' + (grand.opd || '') + '</td><td class="num">' + (grand.ipd || '') + '</td></tr></tbody></table>';
+        return h;
+      }
+
+      function renderMomReport() {
+        $('#mom-all').innerHTML = momTable(null);
+        $('#mom-delhi').innerHTML = momTable('Delhi');
+        $('#mom-blr').innerHTML = momTable('Bangalore');
+        if (!MOM) return;
+        let h = '<table><thead><tr><th>Month</th><th>Tracker</th><th>Tab used</th><th class="num">Rows counted</th></tr></thead><tbody>';
+        MOM.tabsUsed.forEach(function (x) {
+          h += '<tr><td>' + x.month + '</td><td>' + x.tracker + '</td><td>' +
+            (x.tab ? x.tab : '<span style="color:var(--bad)">no matching tab</span>') +
+            '</td><td class="num">' + x.rows + '</td></tr>';
+        });
+        $('#mom-tabs').innerHTML = h + '</tbody></table>';
+      }
+
       function switchReportPane(name) {
-        ['source', 'disposition', 'zone', 'd1'].forEach(p => {
+        ['source', 'disposition', 'zone', 'd1', 'mom'].forEach(p => {
           const el = document.getElementById('pane-' + p);
           if (el) el.style.display = (p === name) ? '' : 'none';
         });
