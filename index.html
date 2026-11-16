@@ -2037,19 +2037,22 @@
         "Distance Concern - Out Of BLR"
       ]);
 
-      // Subset that makes a Patient Lost lead NON-relevant (out-of-territory only).
+      // Patient Lost Reasons that make a Patient Lost lead NON-relevant:
+      // out-of-territory distance, plus Patient Died and Non Cancerous (per Anvi).
       // "Distance Concern - Delhi" is IN Delhi -> still relevant.
-      const NON_REL_DISTANCE_REASONS = new Set([
+      const NON_REL_LOST_REASONS = new Set([
         "Distance Concern",
         "Distance Concern - Out Of Delhi",
-        "Distance Concern - Out Of BLR"
+        "Distance Concern - Out Of BLR",
+        "Patient Died",
+        "Non Cancerous"
       ]);
 
       // Case/space-insensitive matching so reason strings match regardless of casing or spacing
       // (e.g. "Distance Concern - Out of Delhi" vs "...Out Of Delhi").
       function normReason(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
       const DISP_DISTANCE_REASONS_N = new Set([...DISP_DISTANCE_REASONS].map(normReason));
-      const NON_REL_DISTANCE_REASONS_N = new Set([...NON_REL_DISTANCE_REASONS].map(normReason));
+      const NON_REL_LOST_REASONS_N = new Set([...NON_REL_LOST_REASONS].map(normReason));
       // Read the Patient Lost Reason from a row even if the column header casing/spacing differs.
       function getLostReason(row) {
         if (!row) return '';
@@ -2071,7 +2074,6 @@
         "Follow Up(diagnostics)",
         "OPD Done - Undergoing Diagnosis",
         "OPD Done - Treatment Started",
-        "OPD Done - Non-Cancerous",
         "Follow up(Screening)",
         "Follow up(Palliative)",
         "OPD Cancelled",
@@ -2088,7 +2090,8 @@
         "Invalid Number",
         "Duplicate Lead",
         "Other Hospital/Doctor",
-        "Irrelevant"
+        "Irrelevant",
+        "OPD Done - Non-Cancerous"
       ]);
 
       function customDisp(stage, lostReason) {
@@ -2109,15 +2112,17 @@
       // Relevancy rule (per Anvi's spec):
       //   Relevancy % = (relevant leads / total leads from that source) × 100
       //   Relevant = stage is in RELEVANT_STAGES allow-list,
-      //              EXCEPT Patient Lost where reason is a non-relevant Distance Concern.
+      //              EXCEPT Patient Lost where reason is in NON_REL_LOST_REASONS
+      //              (out-of-territory Distance Concern, Patient Died, Non Cancerous).
       //   "Distance Concern - Delhi" is RELEVANT (patient is within Delhi).
-      //   Excluded stages: DNP, Invalid Number, Duplicate Lead, Other Hospital/Doctor, Irrelevant.
+      //   Excluded stages: DNP, Invalid Number, Duplicate Lead, Other Hospital/Doctor, Irrelevant,
+      //                    OPD Done - Non-Cancerous.
       function isRelevant(stage, lostReason) {
         if (!stage) return false;
         const s = String(stage).trim();
         if (!RELEVANT_STAGES.has(s)) return false;
         if (s === "Patient Lost") {
-          if (NON_REL_DISTANCE_REASONS_N.has(normReason(lostReason))) return false;
+          if (NON_REL_LOST_REASONS_N.has(normReason(lostReason))) return false;
         }
         return true;
       }
