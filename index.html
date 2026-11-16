@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-11-16 v24 — relevancy: OPD Done - Non-Cancerous back to relevant';</script>
+  <script>window.__BUILD__ = '2026-11-16 v25 — fix: leads sheet now read up to col DZ so Patient Lost Reason (col CN) is used';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -2974,7 +2974,7 @@
         // LeadSquared leads from a shared sheet (same columns as the dump) → drives the whole dashboard.
         let leadsLoaded = false;
         if (leadsId && leadsTab) tasks.push(
-          fetchSheetRows(leadsId, leadsTab, apiKey, 'A1:BZ50000').then(rows => {
+          fetchSheetRows(leadsId, leadsTab, apiKey, 'A1:DZ50000').then(rows => {
             state.raw = rows;
             leadsLoaded = true;
             autoDetectRefMonth();
@@ -2984,7 +2984,7 @@
         );
         // Knowlarity call logs from a shared sheet (same columns as the call dump).
         if (callsId && callsTab) tasks.push(
-          fetchSheetRows(callsId, callsTab, apiKey, 'A1:BZ50000').then(rows => { state.calls = rows; return ['Calls', rows.length]; })
+          fetchSheetRows(callsId, callsTab, apiKey, 'A1:DZ50000').then(rows => { state.calls = rows; return ['Calls', rows.length]; })
             .catch(e => { throw new Error('Calls: ' + e.message); })
         );
         try {
