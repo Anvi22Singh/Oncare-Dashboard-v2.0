@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Oncare Cancer — Daily Lead Dashboard</title>
-  <script>window.__BUILD__ = '2026-11-16 v23 — relevancy: Patient Lost Reason matrix, OPD Done - Non-Cancerous irrelevant';</script>
+  <script>window.__BUILD__ = '2026-11-16 v24 — relevancy: OPD Done - Non-Cancerous back to relevant';</script>
   <script>/* PapaParse 5.4.1 inlined */
     /* @license
     Papa Parse
@@ -2079,6 +2079,7 @@
         "Follow Up(diagnostics)",
         "OPD Done - Undergoing Diagnosis",
         "OPD Done - Treatment Started",
+        "OPD Done - Non-Cancerous",
         "Follow up(Screening)",
         "Follow up(Palliative)",
         "OPD Cancelled",
@@ -2095,8 +2096,7 @@
         "Invalid Number",
         "Duplicate Lead",
         "Other Hospital/Doctor",
-        "Irrelevant",
-        "OPD Done - Non-Cancerous"
+        "Irrelevant"
       ]);
 
       function customDisp(stage, lostReason) {
@@ -2119,8 +2119,7 @@
       //   Relevant = stage is in RELEVANT_STAGES allow-list,
       //              EXCEPT Patient Lost, which is relevant only when the Patient Lost
       //              Reason is blank or in RELEVANT_LOST_REASONS (see matrix above).
-      //   Excluded stages: DNP, Invalid Number, Duplicate Lead, Other Hospital/Doctor, Irrelevant,
-      //                    OPD Done - Non-Cancerous.
+      //   Excluded stages: DNP, Invalid Number, Duplicate Lead, Other Hospital/Doctor, Irrelevant.
       function isRelevant(stage, lostReason) {
         if (!stage) return false;
         const s = String(stage).trim();
